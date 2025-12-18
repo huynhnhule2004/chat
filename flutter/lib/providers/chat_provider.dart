@@ -97,7 +97,7 @@ class ChatProvider with ChangeNotifier {
   }
 
   // Register new user
-  Future<void> register(String username, String password) async {
+  Future<void> register(String username, String email, String password) async {
     try {
       print('Starting registration for: $username');
       
@@ -113,6 +113,7 @@ class ChatProvider with ChangeNotifier {
       print('Sending registration request...');
       final response = await _apiService.register(
         username,
+        email,
         password,
         keys['publicKey']!,
       );
@@ -304,6 +305,42 @@ class ChatProvider with ChangeNotifier {
     } catch (e) {
       print('Search users error: $e');
       return [];
+    }
+  }
+
+  // Upload avatar
+  Future<void> uploadAvatar(String filePath) async {
+    try {
+      final response = await _apiService.uploadAvatar(filePath);
+      _currentUser = User.fromJson(response['user']);
+      notifyListeners();
+    } catch (e) {
+      print('Upload avatar error: $e');
+      rethrow;
+    }
+  }
+
+  // Update profile
+  Future<void> updateProfile(String email) async {
+    try {
+      final response = await _apiService.updateProfile(email);
+      _currentUser = User.fromJson(response['user']);
+      notifyListeners();
+    } catch (e) {
+      print('Update profile error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete avatar
+  Future<void> deleteAvatar() async {
+    try {
+      final response = await _apiService.deleteAvatar();
+      _currentUser = User.fromJson(response['user']);
+      notifyListeners();
+    } catch (e) {
+      print('Delete avatar error: $e');
+      rethrow;
     }
   }
 

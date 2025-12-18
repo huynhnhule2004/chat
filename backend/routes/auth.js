@@ -7,22 +7,36 @@ const User = require('../models/User');
 router.post('/register', async (req, res) => {
   try {
     console.log('Registration request body:', req.body);
-    const { username, password, publicKey } = req.body;
+    const { username, email, password, publicKey } = req.body;
 
     // Validate input
-    if (!username || !password || !publicKey) {
-      console.log('Missing fields:', { username: !!username, password: !!password, publicKey: !!publicKey });
+    if (!username || !email || !password || !publicKey) {
+      console.log('Missing fields:', { username: !!username, email: !!email, password: !!password, publicKey: !!publicKey });
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Validate email format
+    const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
     // Check if user exists
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({ 
+      $or: [{ username }, { email }] 
+    });
+    
     if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
+      if (existingUser.username === username) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      if (existingUser.email === email) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
     }
 
     // Create new user
-    const user = new User({ username, password, publicKey });
+    const user = new User({ username, email, password, publicKey });
     await user.save();
 
     // Generate token
@@ -33,11 +47,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        publicKey: user.publicKey
-      }
+      user: user.toPublicJSON()
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -55,10 +65,18 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    // Find user
-    const user = await User.findOne({ username });
+    // Find user (support both username and email login)
+    const user = await User.findOne({ 
+      $or: [{ username }, { email: username }] 
+    });
+    
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if user is banned
+    if (user.isBanned) {
+      return res.status(403).json({ error: 'Your account has been banned. Please contact support.' });
     }
 
     // Check password
@@ -66,6 +84,12 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Update last active (using updateOne to avoid validation)
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { lastActive: Date.now() } }
+    );
 
     // Generate token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -75,11 +99,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        username: user.username,
-        publicKey: user.publicKey
-      }
+      user: user.toPublicJSON()
     });
   } catch (error) {
     console.error('Login error:', error);

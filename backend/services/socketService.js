@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const messageService = require('./messageService');
+const User = require('../models/User');
 
 class SocketService {
   constructor(io) {
@@ -9,7 +10,7 @@ class SocketService {
   }
 
   setupSocketHandlers() {
-    this.io.use((socket, next) => {
+    this.io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth.token;
         
@@ -18,6 +19,17 @@ class SocketService {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Check if user is banned
+        const user = await User.findById(decoded.userId);
+        if (!user) {
+          return next(new Error('User not found'));
+        }
+        
+        if (user.isBanned) {
+          return next(new Error('Account is banned'));
+        }
+        
         socket.userId = decoded.userId;
         next();
       } catch (error) {

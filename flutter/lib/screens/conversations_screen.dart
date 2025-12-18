@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/chat_provider.dart';
 import '../models/conversation.dart';
+import '../widgets/user_avatar.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({super.key});
@@ -26,6 +27,27 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       appBar: AppBar(
         title: const Text('Conversations'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/profile');
+            },
+          ),
+          Consumer<ChatProvider>(
+            builder: (context, chatProvider, _) {
+              if (chatProvider.currentUser?.isAdmin == true) {
+                return IconButton(
+                  icon: const Icon(Icons.admin_panel_settings),
+                  tooltip: 'Admin Dashboard',
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/admin');
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => _showUserSearch(context),
@@ -104,8 +126,10 @@ class _ConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: CircleAvatar(
-        child: Text(conversation.username[0].toUpperCase()),
+      leading: UserAvatar(
+        username: conversation.username,
+        avatarUrl: conversation.avatar,
+        size: 48,
       ),
       title: Text(
         conversation.username,

@@ -6,6 +6,8 @@ import 'providers/chat_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/conversations_screen.dart';
 import 'screens/chat_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +43,8 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/conversations': (context) => const ConversationsScreen(),
+          '/profile': (context) => const ProfileScreen(),
+          '/admin': (context) => const AdminDashboardScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/chat') {

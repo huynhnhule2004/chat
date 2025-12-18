@@ -39,6 +39,7 @@ class ApiService {
   // Auth endpoints
   Future<Map<String, dynamic>> register(
     String username,
+    String email,
     String password,
     String publicKey,
   ) async {
@@ -48,6 +49,7 @@ class ApiService {
       
       final response = await _dio.post('/auth/register', data: {
         'username': username,
+        'email': email,
         'password': password,
         'publicKey': publicKey,
       });
@@ -151,5 +153,108 @@ class ApiService {
     } catch (e) {
       rethrow;
     }
+  }
+
+  // Profile endpoints
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await _dio.get('/profile/me');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadAvatar(String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'avatar': await MultipartFile.fromFile(filePath),
+      });
+
+      final response = await _dio.post('/profile/upload-avatar', data: formData);
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateProfile(String email) async {
+    try {
+      final response = await _dio.put('/profile/update', data: {
+        'email': email,
+      });
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteAvatar() async {
+    try {
+      final response = await _dio.delete('/profile/delete-avatar');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Admin endpoints
+  Future<Map<String, dynamic>> getUsers({
+    int page = 1,
+    int limit = 20,
+    String search = '',
+    String role = '',
+    String status = '',
+  }) async {
+    try {
+      final response = await _dio.get('/admin/users', queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (search.isNotEmpty) 'search': search,
+        if (role.isNotEmpty) 'role': role,
+        if (status.isNotEmpty) 'status': status,
+      });
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> banUser(String userId, String reason) async {
+    try {
+      final response = await _dio.post('/admin/ban-user', data: {
+        'userId': userId,
+        'reason': reason,
+      });
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserRole(String userId, String role) async {
+    try {
+      final response = await _dio.post('/admin/update-role', data: {
+        'userId': userId,
+        'role': role,
+      });
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getAdminStats() async {
+    try {
+      final response = await _dio.get('/admin/stats');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  String getAvatarUrl(String? avatar) {
+    if (avatar == null || avatar.isEmpty) return '';
+    return '${AppConfig.baseUrl}$avatar';
   }
 }

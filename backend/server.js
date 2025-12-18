@@ -11,6 +11,8 @@ const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const messagesRoutes = require('./routes/messages');
 const filesRoutes = require('./routes/files');
+const profileRoutes = require('./routes/profile');
+const adminRoutes = require('./routes/admin');
 
 // Initialize Express app
 const app = express();
@@ -40,6 +42,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/files', filesRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Serve uploaded files (avatars, files, etc.)
+app.use('/uploads', express.static('uploads'));
 
 // Health check
 app.get('/health', (req, res) => {
