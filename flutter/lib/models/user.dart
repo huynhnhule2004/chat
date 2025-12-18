@@ -35,11 +35,11 @@ class User {
       role: json['role'] ?? 'user',
       isActive: json['isActive'] ?? true,
       isBanned: json['isBanned'] ?? false,
-      lastActive: json['lastActive'] != null 
-          ? DateTime.parse(json['lastActive']) 
+      lastActive: json['lastActive'] != null
+          ? DateTime.parse(json['lastActive'])
           : null,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : null,
     );
   }

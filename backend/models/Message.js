@@ -23,6 +23,33 @@ const MessageSchema = new mongoose.Schema({
   timestamp: {
     type: Date,
     default: Date.now
+  },
+  // Forward message fields
+  isForwarded: {
+    type: Boolean,
+    default: false
+  },
+  originalSenderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false // Only set if message is forwarded
+  },
+  forwardedFrom: {
+    type: String,
+    required: false // Original sender's username (for display)
+  },
+  // File encryption fields (for hybrid encryption)
+  fileUrl: {
+    type: String,
+    required: false // S3/MinIO URL for media files
+  },
+  encryptedFileKey: {
+    type: String,
+    required: false // File symmetric key, encrypted with recipient's public key
+  },
+  fileSize: {
+    type: Number,
+    required: false
   }
 });
 

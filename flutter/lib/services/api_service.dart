@@ -7,25 +7,29 @@ class ApiService {
   String? _token;
 
   ApiService._init() {
-    _dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.apiUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
 
     // Add interceptors
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (_token != null) {
-          options.headers['Authorization'] = 'Bearer $_token';
-        }
-        return handler.next(options);
-      },
-      onError: (error, handler) {
-        print('API Error: ${error.message}');
-        return handler.next(error);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (_token != null) {
+            options.headers['Authorization'] = 'Bearer $_token';
+          }
+          return handler.next(options);
+        },
+        onError: (error, handler) {
+          print('API Error: ${error.message}');
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   void setToken(String token) {
@@ -46,13 +50,16 @@ class ApiService {
     try {
       print('API Service - Registering user: $username');
       print('API Service - PublicKey: ${publicKey.substring(0, 20)}...');
-      
-      final response = await _dio.post('/auth/register', data: {
-        'username': username,
-        'email': email,
-        'password': password,
-        'publicKey': publicKey,
-      });
+
+      final response = await _dio.post(
+        '/auth/register',
+        data: {
+          'username': username,
+          'email': email,
+          'password': password,
+          'publicKey': publicKey,
+        },
+      );
       print('API Service - Registration successful');
       return response.data;
     } catch (e) {
@@ -67,10 +74,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
-      final response = await _dio.post('/auth/login', data: {
-        'username': username,
-        'password': password,
-      });
+      final response = await _dio.post(
+        '/auth/login',
+        data: {'username': username, 'password': password},
+      );
       return response.data;
     } catch (e) {
       rethrow;
@@ -89,9 +96,10 @@ class ApiService {
 
   Future<List<dynamic>> searchUsers(String query) async {
     try {
-      final response = await _dio.get('/users/search', queryParameters: {
-        'query': query,
-      });
+      final response = await _dio.get(
+        '/users/search',
+        queryParameters: {'query': query},
+      );
       return response.data['users'];
     } catch (e) {
       rethrow;
@@ -105,10 +113,10 @@ class ApiService {
     int skip = 0,
   }) async {
     try {
-      final response = await _dio.get('/messages/$userId', queryParameters: {
-        'limit': limit,
-        'skip': skip,
-      });
+      final response = await _dio.get(
+        '/messages/$userId',
+        queryParameters: {'limit': limit, 'skip': skip},
+      );
       return response.data['messages'];
     } catch (e) {
       rethrow;
@@ -171,7 +179,10 @@ class ApiService {
         'avatar': await MultipartFile.fromFile(filePath),
       });
 
-      final response = await _dio.post('/profile/upload-avatar', data: formData);
+      final response = await _dio.post(
+        '/profile/upload-avatar',
+        data: formData,
+      );
       return response.data;
     } catch (e) {
       rethrow;
@@ -180,9 +191,10 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateProfile(String email) async {
     try {
-      final response = await _dio.put('/profile/update', data: {
-        'email': email,
-      });
+      final response = await _dio.put(
+        '/profile/update',
+        data: {'email': email},
+      );
       return response.data;
     } catch (e) {
       rethrow;
@@ -207,13 +219,16 @@ class ApiService {
     String status = '',
   }) async {
     try {
-      final response = await _dio.get('/admin/users', queryParameters: {
-        'page': page,
-        'limit': limit,
-        if (search.isNotEmpty) 'search': search,
-        if (role.isNotEmpty) 'role': role,
-        if (status.isNotEmpty) 'status': status,
-      });
+      final response = await _dio.get(
+        '/admin/users',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (search.isNotEmpty) 'search': search,
+          if (role.isNotEmpty) 'role': role,
+          if (status.isNotEmpty) 'status': status,
+        },
+      );
       return response.data;
     } catch (e) {
       rethrow;
@@ -222,22 +237,25 @@ class ApiService {
 
   Future<Map<String, dynamic>> banUser(String userId, String reason) async {
     try {
-      final response = await _dio.post('/admin/ban-user', data: {
-        'userId': userId,
-        'reason': reason,
-      });
+      final response = await _dio.post(
+        '/admin/ban-user',
+        data: {'userId': userId, 'reason': reason},
+      );
       return response.data;
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> updateUserRole(String userId, String role) async {
+  Future<Map<String, dynamic>> updateUserRole(
+    String userId,
+    String role,
+  ) async {
     try {
-      final response = await _dio.post('/admin/update-role', data: {
-        'userId': userId,
-        'role': role,
-      });
+      final response = await _dio.post(
+        '/admin/update-role',
+        data: {'userId': userId, 'role': role},
+      );
       return response.data;
     } catch (e) {
       rethrow;

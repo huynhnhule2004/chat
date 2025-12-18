@@ -12,12 +12,12 @@ class StorageInfo {
   });
 
   int get usedBytes => totalBytes - freeBytes;
-  
-  double get usedPercentage => 
-    totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0;
-  
-  double get appPercentage => 
-    totalBytes > 0 ? (usedByApp / totalBytes) * 100 : 0;
+
+  double get usedPercentage =>
+      totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0;
+
+  double get appPercentage =>
+      totalBytes > 0 ? (usedByApp / totalBytes) * 100 : 0;
 
   String get totalSize => formatBytes(totalBytes);
   String get freeSize => formatBytes(freeBytes);
@@ -80,8 +80,5 @@ class StorageAnalysisParams {
   final String appDir;
   final String dbPath;
 
-  StorageAnalysisParams({
-    required this.appDir,
-    required this.dbPath,
-  });
+  StorageAnalysisParams({required this.appDir, required this.dbPath});
 }

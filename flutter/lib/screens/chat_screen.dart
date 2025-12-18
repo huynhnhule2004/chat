@@ -6,16 +6,15 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 import '../providers/chat_provider.dart';
 import '../models/message.dart';
+import '../models/user.dart';
+import '../services/forward_service.dart';
+import 'forward_contact_selection_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
   final String username;
 
-  const ChatScreen({
-    super.key,
-    required this.userId,
-    required this.username,
-  });
+  const ChatScreen({super.key, required this.userId, required this.username});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -44,7 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _onTyping() {
     context.read<ChatProvider>().sendTyping(widget.userId, true);
-    
+
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 2), () {
       context.read<ChatProvider>().sendTyping(widget.userId, false);
@@ -59,13 +58,17 @@ class _ChatScreenState extends State<ChatScreen> {
     context.read<ChatProvider>().sendTyping(widget.userId, false);
 
     try {
-      await context.read<ChatProvider>().sendMessage(widget.userId, text);
+      await context.read<ChatProvider>().sendMessage(
+        widget.userId,
+        text,
+        'text',
+      );
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
       }
     }
   }
@@ -74,15 +77,15 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final picker = ImagePicker();
       final image = await picker.pickImage(source: source);
-      
+
       if (image != null) {
         await _uploadAndSendFile(image.path, 'image');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
     }
   }
@@ -90,20 +93,21 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles();
-      
+
       if (result != null && result.files.single.path != null) {
-        final fileType = result.files.single.extension == 'mp4' ||
-                         result.files.single.extension == 'mov'
+        final fileType =
+            result.files.single.extension == 'mp4' ||
+                result.files.single.extension == 'mov'
             ? 'video'
             : 'file';
-        
+
         await _uploadAndSendFile(result.files.single.path!, fileType);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick file: $e')));
       }
     }
   }
@@ -112,9 +116,9 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       // Show loading
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Uploading...')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Uploading...')));
       }
 
       // Upload file
@@ -122,11 +126,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final fileUrl = await chatProvider.uploadFile(filePath);
 
       // Send message with file URL
-      await chatProvider.sendMessage(
-        widget.userId,
-        fileUrl,
-        messageType: messageType,
-      );
+      await chatProvider.sendMessage(widget.userId, fileUrl, messageType);
 
       _scrollToBottom();
 
@@ -135,9 +135,9 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to upload: $e')));
       }
     }
   }
@@ -196,11 +196,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     final isMe = message.senderId == currentUserId;
-                    
-                    return _MessageBubble(
-                      message: message,
-                      isMe: isMe,
-                    );
+
+                    return _MessageBubble(message: message, isMe: isMe);
                   },
                 );
               },
@@ -296,44 +293,187 @@ class _MessageBubble extends StatelessWidget {
   final Message message;
   final bool isMe;
 
-  const _MessageBubble({
-    required this.message,
-    required this.isMe,
-  });
+  const _MessageBubble({required this.message, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
-        ),
-        decoration: BoxDecoration(
-          color: isMe ? Theme.of(context).primaryColor : Colors.grey[300],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Message content
-            _buildMessageContent(context),
-            const SizedBox(height: 4),
+      child: GestureDetector(
+        onLongPress: () => _showMessageOptions(context, message),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.7,
+          ),
+          decoration: BoxDecoration(
+            color: isMe ? Theme.of(context).primaryColor : Colors.grey[300],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Forward badge
+              if (message.isForwarded)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.forward,
+                        size: 12,
+                        color: isMe ? Colors.white70 : Colors.black54,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Forwarded${message.forwardedFrom != null ? ' from ${message.forwardedFrom}' : ''}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: isMe ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-            // Timestamp
-            Text(
-              DateFormat.jm().format(message.timestamp),
-              style: TextStyle(
-                fontSize: 10,
-                color: isMe ? Colors.white70 : Colors.black54,
+              // Message content
+              _buildMessageContent(context),
+              const SizedBox(height: 4),
+
+              // Timestamp
+              Text(
+                DateFormat.jm().format(message.timestamp),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe ? Colors.white70 : Colors.black54,
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMessageOptions(BuildContext context, Message message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.forward),
+              title: const Text('Forward'),
+              onTap: () {
+                Navigator.pop(context);
+                _forwardMessage(context, message);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copy'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implement copy to clipboard
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Implement delete message
+              },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _forwardMessage(BuildContext context, Message message) async {
+    try {
+      // Step 1: Show contact selection screen
+      final selectedContacts = await Navigator.push<List<User>>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ForwardContactSelectionScreen(),
+        ),
+      );
+
+      if (selectedContacts == null || selectedContacts.isEmpty) {
+        return;
+      }
+
+      // Show loading indicator
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Step 2: Get current user info
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      final currentUser = chatProvider.currentUser;
+
+      if (currentUser == null) {
+        if (!context.mounted) return;
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: Current user not found')),
+        );
+        return;
+      }
+
+      // Step 3: Forward message with re-encryption
+      final forwardedMessages = await ForwardService.instance.forwardMessage(
+        originalMessage: message,
+        recipients: selectedContacts,
+        currentUserId: currentUser.id,
+        originalSenderUsername: currentUser.username,
+      );
+
+      // Step 4: Send forwarded messages via socket
+      for (final forwardedMsg in forwardedMessages) {
+        await chatProvider.sendMessage(
+          forwardedMsg.receiverId,
+          forwardedMsg.content,
+          forwardedMsg.messageType,
+          fileUrl: forwardedMsg.fileUrl,
+          encryptedFileKey: forwardedMsg.encryptedFileKey,
+          isForwarded: true,
+          originalSenderId: forwardedMsg.originalSenderId,
+          forwardedFrom: forwardedMsg.forwardedFrom,
+        );
+      }
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Message forwarded to ${selectedContacts.length} contact(s)',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading if open
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to forward message: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildMessageContent(BuildContext context) {
@@ -347,7 +487,7 @@ class _MessageBubble extends StatelessWidget {
             return const Text('Failed to load image');
           },
         );
-      
+
       case 'video':
         return InkWell(
           onTap: () {
@@ -368,7 +508,7 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         );
-      
+
       case 'file':
         return InkWell(
           onTap: () {
@@ -389,13 +529,11 @@ class _MessageBubble extends StatelessWidget {
             ),
           ),
         );
-      
+
       default:
         return Text(
           message.content,
-          style: TextStyle(
-            color: isMe ? Colors.white : Colors.black87,
-          ),
+          style: TextStyle(color: isMe ? Colors.white : Colors.black87),
         );
     }
   }

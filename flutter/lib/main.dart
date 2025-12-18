@@ -13,7 +13,7 @@ import 'screens/settings_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize sqflite for desktop platforms (not for web or mobile)
   if (!kIsWeb) {
     try {
@@ -23,7 +23,7 @@ void main() {
       print('Database initialization: $e');
     }
   }
-  
+
   runApp(const MyApp());
 }
 
@@ -53,7 +53,9 @@ class MyApp extends StatelessWidget {
             title: 'E2EE Chat',
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeProvider.isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
             debugShowCheckedModeBanner: false,
             home: const LoginScreen(),
             onGenerateRoute: (settings) {

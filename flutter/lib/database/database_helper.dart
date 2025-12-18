@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:io' show Platform;
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -20,8 +19,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Increment version for schema changes
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -47,6 +47,12 @@ class DatabaseHelper {
         timestamp INTEGER NOT NULL,
         is_sent INTEGER NOT NULL DEFAULT 0,
         is_read INTEGER NOT NULL DEFAULT 0,
+        is_forwarded INTEGER NOT NULL DEFAULT 0,
+        original_sender_id TEXT,
+        forwarded_from TEXT,
+        file_url TEXT,
+        encrypted_file_key TEXT,
+        file_size INTEGER,
         FOREIGN KEY (sender_id) REFERENCES users (id),
         FOREIGN KEY (receiver_id) REFERENCES users (id)
       )
@@ -71,6 +77,24 @@ class DatabaseHelper {
         created_at INTEGER NOT NULL
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add forward message fields
+      await db.execute(
+        'ALTER TABLE messages ADD COLUMN is_forwarded INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE messages ADD COLUMN original_sender_id TEXT',
+      );
+      await db.execute('ALTER TABLE messages ADD COLUMN forwarded_from TEXT');
+      await db.execute('ALTER TABLE messages ADD COLUMN file_url TEXT');
+      await db.execute(
+        'ALTER TABLE messages ADD COLUMN encrypted_file_key TEXT',
+      );
+      await db.execute('ALTER TABLE messages ADD COLUMN file_size INTEGER');
+    }
   }
 
   // User operations
@@ -125,9 +149,10 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getConversations(String userId) async {
     final db = await database;
-    
+
     // Get last message for each conversation
-    return await db.rawQuery('''
+    return await db.rawQuery(
+      '''
       SELECT 
         u.id as user_id,
         u.username,
@@ -152,15 +177,20 @@ class DatabaseHelper {
       )
       JOIN users u ON u.id = conv.other_user_id
       ORDER BY m.timestamp DESC
-    ''', [userId, userId, userId, userId, userId]);
+    ''',
+      [userId, userId, userId, userId, userId],
+    );
   }
 
   Future<int> getUnreadCount(String userId, String senderId) async {
     final db = await database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT COUNT(*) as count FROM messages
       WHERE receiver_id = ? AND sender_id = ? AND is_read = 0
-    ''', [userId, senderId]);
+    ''',
+      [userId, senderId],
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
@@ -177,15 +207,11 @@ class DatabaseHelper {
   // Encryption key operations
   Future<void> saveSharedKey(String userId, String sharedKey) async {
     final db = await database;
-    await db.insert(
-      'encryption_keys',
-      {
-        'user_id': userId,
-        'shared_key': sharedKey,
-        'created_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert('encryption_keys', {
+      'user_id': userId,
+      'shared_key': sharedKey,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<String?> getSharedKey(String userId) async {

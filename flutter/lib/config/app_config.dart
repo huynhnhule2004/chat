@@ -6,11 +6,11 @@ class AppConfig {
   static const String baseUrl = 'http://localhost:3000';
   static const String apiUrl = '$baseUrl/api';
   static const String socketUrl = baseUrl;
-  
+
   // Message limits
   static const int messagesPerPage = 50;
   static const int maxFileSize = 100 * 1024 * 1024; // 100MB
-  
+
   // Encryption
   static const String keyAlgorithm = 'ECDH';
   static const String encryptionAlgorithm = 'AES-256-GCM';

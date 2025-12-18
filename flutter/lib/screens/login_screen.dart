@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final chatProvider = context.read<ChatProvider>();
-      
+
       if (_isLogin) {
         await chatProvider.login(
           _usernameController.text.trim(),
@@ -53,7 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isLogin ? 'Login failed: $e' : 'Registration failed: $e'),
+            content: Text(
+              _isLogin ? 'Login failed: $e' : 'Registration failed: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -85,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Theme.of(context).primaryColor,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Title
                   Text(
                     'E2EE Chat',
@@ -97,13 +99,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'End-to-End Encrypted Messaging',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
-                  
+
                   // Username field
                   TextFormField(
                     controller: _usernameController,
@@ -120,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Email field (only for registration)
                   if (!_isLogin) ...[
                     TextFormField(
@@ -135,7 +137,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Please enter email';
                         }
-                        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        final emailRegex = RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        );
                         if (!emailRegex.hasMatch(value)) {
                           return 'Please enter valid email';
                         }
@@ -144,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   // Password field
                   TextFormField(
                     controller: _passwordController,
@@ -165,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Submit button
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
@@ -181,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         : Text(_isLogin ? 'Login' : 'Register'),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Toggle button
                   TextButton(
                     onPressed: () {

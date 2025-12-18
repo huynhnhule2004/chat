@@ -8,6 +8,17 @@ class Message {
   final bool isSent;
   final bool isRead;
 
+  // Forward message fields
+  final bool isForwarded;
+  final String? originalSenderId;
+  final String? forwardedFrom; // Original sender's username
+
+  // File encryption fields (hybrid encryption)
+  final String? fileUrl;
+  final String?
+  encryptedFileKey; // Symmetric key encrypted with recipient's public key
+  final int? fileSize;
+
   Message({
     required this.id,
     required this.senderId,
@@ -17,6 +28,12 @@ class Message {
     required this.timestamp,
     this.isSent = false,
     this.isRead = false,
+    this.isForwarded = false,
+    this.originalSenderId,
+    this.forwardedFrom,
+    this.fileUrl,
+    this.encryptedFileKey,
+    this.fileSize,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -31,6 +48,12 @@ class Message {
           : DateTime.parse(json['timestamp']),
       isSent: json['isSent'] == 1 || json['isSent'] == true,
       isRead: json['isRead'] == 1 || json['isRead'] == true,
+      isForwarded: json['isForwarded'] == 1 || json['isForwarded'] == true,
+      originalSenderId: json['originalSenderId'],
+      forwardedFrom: json['forwardedFrom'],
+      fileUrl: json['fileUrl'],
+      encryptedFileKey: json['encryptedFileKey'],
+      fileSize: json['fileSize'],
     );
   }
 
@@ -44,6 +67,12 @@ class Message {
       'timestamp': timestamp.toIso8601String(),
       'isSent': isSent,
       'isRead': isRead,
+      'isForwarded': isForwarded,
+      if (originalSenderId != null) 'originalSenderId': originalSenderId,
+      if (forwardedFrom != null) 'forwardedFrom': forwardedFrom,
+      if (fileUrl != null) 'fileUrl': fileUrl,
+      if (encryptedFileKey != null) 'encryptedFileKey': encryptedFileKey,
+      if (fileSize != null) 'fileSize': fileSize,
     };
   }
 
@@ -57,6 +86,12 @@ class Message {
       'timestamp': timestamp.millisecondsSinceEpoch,
       'is_sent': isSent ? 1 : 0,
       'is_read': isRead ? 1 : 0,
+      'is_forwarded': isForwarded ? 1 : 0,
+      'original_sender_id': originalSenderId,
+      'forwarded_from': forwardedFrom,
+      'file_url': fileUrl,
+      'encrypted_file_key': encryptedFileKey,
+      'file_size': fileSize,
     };
   }
 
@@ -70,6 +105,12 @@ class Message {
       timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp']),
       isSent: map['is_sent'] == 1,
       isRead: map['is_read'] == 1,
+      isForwarded: map['is_forwarded'] == 1,
+      originalSenderId: map['original_sender_id'],
+      forwardedFrom: map['forwarded_from'],
+      fileUrl: map['file_url'],
+      encryptedFileKey: map['encrypted_file_key'],
+      fileSize: map['file_size'],
     );
   }
 
@@ -82,6 +123,12 @@ class Message {
     DateTime? timestamp,
     bool? isSent,
     bool? isRead,
+    bool? isForwarded,
+    String? originalSenderId,
+    String? forwardedFrom,
+    String? fileUrl,
+    String? encryptedFileKey,
+    int? fileSize,
   }) {
     return Message(
       id: id ?? this.id,
@@ -92,6 +139,12 @@ class Message {
       timestamp: timestamp ?? this.timestamp,
       isSent: isSent ?? this.isSent,
       isRead: isRead ?? this.isRead,
+      isForwarded: isForwarded ?? this.isForwarded,
+      originalSenderId: originalSenderId ?? this.originalSenderId,
+      forwardedFrom: forwardedFrom ?? this.forwardedFrom,
+      fileUrl: fileUrl ?? this.fileUrl,
+      encryptedFileKey: encryptedFileKey ?? this.encryptedFileKey,
+      fileSize: fileSize ?? this.fileSize,
     );
   }
 }

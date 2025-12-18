@@ -22,7 +22,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
 
   Future<void> _analyzeStorage() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final info = await _storageService.analyzeStorage();
       if (mounted) {
@@ -34,9 +34,9 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error analyzing storage: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error analyzing storage: $e')));
       }
     }
   }
@@ -70,22 +70,22 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ),
             )
           : _storageInfo == null
-              ? const Center(child: Text('No storage data available'))
-              : RefreshIndicator(
-                  onRefresh: _analyzeStorage,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildDeviceStorageCard(),
-                      const SizedBox(height: 16),
-                      _buildAppStorageCard(),
-                      const SizedBox(height: 16),
-                      _buildCleanupSection(),
-                      const SizedBox(height: 16),
-                      _buildChatStorageList(),
-                    ],
-                  ),
-                ),
+          ? const Center(child: Text('No storage data available'))
+          : RefreshIndicator(
+              onRefresh: _analyzeStorage,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildDeviceStorageCard(),
+                  const SizedBox(height: 16),
+                  _buildAppStorageCard(),
+                  const SizedBox(height: 16),
+                  _buildCleanupSection(),
+                  const SizedBox(height: 16),
+                  _buildChatStorageList(),
+                ],
+              ),
+            ),
     );
   }
 
@@ -110,7 +110,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -124,7 +124,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Storage info
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -139,11 +139,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
                   _storageInfo!.freeSize,
                   '${(100 - _storageInfo!.usedPercentage).toStringAsFixed(1)}%',
                 ),
-                _buildStorageInfoItem(
-                  'Total',
-                  _storageInfo!.totalSize,
-                  '100%',
-                ),
+                _buildStorageInfoItem('Total', _storageInfo!.totalSize, '100%'),
               ],
             ),
           ],
@@ -173,14 +169,11 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total app usage',
-                  style: TextStyle(fontSize: 16),
-                ),
+                const Text('Total app usage', style: TextStyle(fontSize: 16)),
                 Text(
                   _storageInfo!.appSize,
                   style: const TextStyle(
@@ -222,7 +215,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Level 1: Clear Cache
             _buildCleanupOption(
               icon: Icons.cached,
@@ -233,7 +226,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               onTap: () => _clearCache(),
             ),
             const Divider(),
-            
+
             // Level 2: Delete Old Messages
             _buildCleanupOption(
               icon: Icons.access_time,
@@ -275,7 +268,11 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
             ),
             child: Text(
               level,
-              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -291,9 +288,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(32),
-          child: Center(
-            child: Text('No chat data found'),
-          ),
+          child: Center(child: Text('No chat data found')),
         ),
       );
     }
@@ -309,10 +304,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.chat,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.chat, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 const Text(
                   'Storage by Chat',
@@ -321,7 +313,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             ...sortedChats.map((chat) => _buildChatStorageItem(chat)),
           ],
         ),
@@ -334,9 +326,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            child: Text(chat.username[0].toUpperCase()),
-          ),
+          leading: CircleAvatar(child: Text(chat.username[0].toUpperCase())),
           title: Text(chat.username),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,10 +392,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         Text(
           percentage,
           style: const TextStyle(fontSize: 10, color: Colors.grey),
@@ -443,7 +430,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
 
     if (confirmed == true && mounted) {
       setState(() => _isLoading = true);
-      
+
       try {
         final deletedSize = await _storageService.clearCache();
         if (mounted) {
@@ -459,9 +446,9 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
       } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error clearing cache: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error clearing cache: $e')));
         }
       }
     }
@@ -492,15 +479,15 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
 
     if (confirmed == true && mounted) {
       setState(() => _isLoading = true);
-      
+
       try {
-        final deletedSize = await _storageService.deleteChatHistory(chat.userId);
+        final deletedSize = await _storageService.deleteChatHistory(
+          chat.userId,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'Deleted ${StorageInfo.formatBytes(deletedSize)}',
-              ),
+              content: Text('Deleted ${StorageInfo.formatBytes(deletedSize)}'),
             ),
           );
           await _analyzeStorage();
@@ -508,9 +495,9 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
       } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting chat: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting chat: $e')));
         }
       }
     }
@@ -518,7 +505,7 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
 
   Future<void> _showDeleteOldMessagesDialog() async {
     Duration? selectedDuration;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -562,15 +549,15 @@ class _StorageAnalysisScreenState extends State<StorageAnalysisScreen> {
 
     if (confirmed == true && selectedDuration != null && mounted) {
       setState(() => _isLoading = true);
-      
+
       try {
-        final deletedSize = await _storageService.deleteOldMessages(selectedDuration!);
+        final deletedSize = await _storageService.deleteOldMessages(
+          selectedDuration!,
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'Deleted ${StorageInfo.formatBytes(deletedSize)}',
-              ),
+              content: Text('Deleted ${StorageInfo.formatBytes(deletedSize)}'),
             ),
           );
           await _analyzeStorage();

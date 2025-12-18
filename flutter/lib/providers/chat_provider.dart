@@ -18,7 +18,7 @@ class ChatProvider with ChangeNotifier {
   User? get currentUser => _currentUser;
   String? get token => _token;
   List<Conversation> get conversations => _conversations;
-  
+
   List<Message> getMessages(String userId) => _messagesByUser[userId] ?? [];
   bool isUserTyping(String userId) => _typingStatus[userId] ?? false;
 
@@ -36,12 +36,12 @@ class ChatProvider with ChangeNotifier {
     _socketService.onMessageReceived = (data) async {
       try {
         final message = Message.fromJson(data);
-        
+
         // Get shared key for this user
-        final otherUserId = message.senderId == _currentUser?.id 
-            ? message.receiverId 
+        final otherUserId = message.senderId == _currentUser?.id
+            ? message.receiverId
             : message.senderId;
-        
+
         String? sharedKey = _sharedKeys[otherUserId];
         if (sharedKey == null) {
           sharedKey = await _db.getSharedKey(otherUserId);
@@ -76,7 +76,7 @@ class ChatProvider with ChangeNotifier {
 
         // Refresh conversations
         await loadConversations();
-        
+
         notifyListeners();
       } catch (e) {
         print('Error handling received message: $e');
@@ -100,15 +100,15 @@ class ChatProvider with ChangeNotifier {
   Future<void> register(String username, String email, String password) async {
     try {
       print('Starting registration for: $username');
-      
+
       // Generate key pair
       final keys = await _cryptoService.generateKeyPair();
       print('Generated keys - publicKey length: ${keys['publicKey']?.length}');
-      
+
       if (keys['publicKey'] == null || keys['publicKey']!.isEmpty) {
         throw Exception('Failed to generate public key');
       }
-      
+
       // Register with server
       print('Sending registration request...');
       final response = await _apiService.register(
@@ -121,16 +121,16 @@ class ChatProvider with ChangeNotifier {
 
       _token = response['token'];
       _currentUser = User.fromJson(response['user']);
-      
+
       // Set API token
       _apiService.setToken(_token!);
-      
+
       // Connect socket
       _socketService.connect(_token!);
-      
+
       // Save user to local db
       await _db.insertUser(_currentUser!.toDatabase());
-      
+
       notifyListeners();
     } catch (e) {
       print('Registration error: $e');
@@ -145,19 +145,19 @@ class ChatProvider with ChangeNotifier {
 
       _token = response['token'];
       _currentUser = User.fromJson(response['user']);
-      
+
       // Set API token
       _apiService.setToken(_token!);
-      
+
       // Connect socket
       _socketService.connect(_token!);
-      
+
       // Save user to local db
       await _db.insertUser(_currentUser!.toDatabase());
-      
+
       // Load conversations
       await loadConversations();
-      
+
       notifyListeners();
     } catch (e) {
       print('Login error: $e');
@@ -182,13 +182,15 @@ class ChatProvider with ChangeNotifier {
     try {
       // Load from local database first (fast)
       final localConvs = await _db.getConversations(_currentUser!.id);
-      _conversations = localConvs.map((c) => Conversation.fromDatabase(c)).toList();
+      _conversations = localConvs
+          .map((c) => Conversation.fromDatabase(c))
+          .toList();
       notifyListeners();
 
       // Then sync with server (if online)
       if (_socketService.isConnected) {
-        final serverConvs = await _apiService.getConversations();
         // Could merge server data here if needed
+        // final serverConvs = await _apiService.getConversations();
       }
     } catch (e) {
       print('Load conversations error: $e');
@@ -205,7 +207,7 @@ class ChatProvider with ChangeNotifier {
           .toList()
           .reversed
           .toList();
-      
+
       notifyListeners();
 
       // Mark as read
@@ -216,47 +218,66 @@ class ChatProvider with ChangeNotifier {
   }
 
   // Send message
-  Future<void> sendMessage(String receiverId, String content, {String messageType = 'text'}) async {
+  Future<void> sendMessage(
+    String receiverId,
+    String content,
+    String messageType, {
+    String? fileUrl,
+    String? encryptedFileKey,
+    bool isForwarded = false,
+    String? originalSenderId,
+    String? forwardedFrom,
+  }) async {
     try {
       // Get or create shared key
       String? sharedKey = _sharedKeys[receiverId];
-      
+
       if (sharedKey == null) {
         // Load from database
         sharedKey = await _db.getSharedKey(receiverId);
-        
+
         if (sharedKey == null) {
           // Compute new shared key
           final myKeys = await _cryptoService.getStoredKeys();
           final receiverData = await _apiService.getUserPublicKey(receiverId);
-          
+
           sharedKey = await _cryptoService.computeSharedSecret(
             myKeys!['privateKey']!,
             receiverData['publicKey'],
           );
-          
+
           // Save for future use
           await _db.saveSharedKey(receiverId, sharedKey);
         }
-        
+
         _sharedKeys[receiverId] = sharedKey;
       }
 
-      // Encrypt message
-      final encryptedContent = await _cryptoService.encryptMessage(content, sharedKey);
+      // For forwarded messages, content is already encrypted for this recipient
+      // For new messages, encrypt the content
+      final encryptedContent = isForwarded
+          ? content // Already encrypted by ForwardService
+          : await _cryptoService.encryptMessage(content, sharedKey);
 
       // Create message object
       final message = Message(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         senderId: _currentUser!.id,
         receiverId: receiverId,
-        content: content, // Store decrypted locally
+        content: isForwarded
+            ? content
+            : content, // For forwarded, store encrypted (already decrypted by ForwardService)
         messageType: messageType,
         timestamp: DateTime.now(),
         isSent: false,
+        isForwarded: isForwarded,
+        originalSenderId: originalSenderId,
+        forwardedFrom: forwardedFrom,
+        fileUrl: fileUrl,
+        encryptedFileKey: encryptedFileKey,
       );
 
-      // Save to local database (decrypted)
+      // Save to local database
       await _db.insertMessage(message.toDatabase());
 
       // Add to UI immediately
@@ -271,6 +292,11 @@ class ChatProvider with ChangeNotifier {
         receiverId: receiverId,
         content: encryptedContent,
         messageType: messageType,
+        isForwarded: isForwarded,
+        originalSenderId: originalSenderId,
+        forwardedFrom: forwardedFrom,
+        fileUrl: fileUrl,
+        encryptedFileKey: encryptedFileKey,
       );
 
       // Join room if not already

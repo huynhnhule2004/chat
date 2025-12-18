@@ -21,11 +21,13 @@ class Conversation {
     return Conversation(
       userId: json['userId'] ?? json['user_id'] ?? '',
       username: json['username'] ?? '',
-      lastMessage: json['lastMessage']?['content'] ?? json['last_message'] ?? '',
+      lastMessage:
+          json['lastMessage']?['content'] ?? json['last_message'] ?? '',
       lastTimestamp: json['lastMessage']?['timestamp'] != null
           ? DateTime.parse(json['lastMessage']['timestamp'])
           : DateTime.fromMillisecondsSinceEpoch(json['last_timestamp'] ?? 0),
-      messageType: json['lastMessage']?['messageType'] ?? json['message_type'] ?? 'text',
+      messageType:
+          json['lastMessage']?['messageType'] ?? json['message_type'] ?? 'text',
       unreadCount: json['unreadCount'] ?? 0,
       avatar: json['avatar'],
     );

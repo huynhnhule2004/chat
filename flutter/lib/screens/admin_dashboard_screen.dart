@@ -66,9 +66,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load users: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load users: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -85,12 +85,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     try {
       await ApiService.instance.banUser(user.id, reason);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              user.isBanned ? 'User unbanned successfully' : 'User banned successfully',
+              user.isBanned
+                  ? 'User unbanned successfully'
+                  : 'User banned successfully',
             ),
           ),
         );
@@ -98,9 +100,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update user: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update user: $e')));
       }
     }
   }
@@ -111,9 +113,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (currentUser == null || !currentUser.isAdmin) {
       return const Scaffold(
-        body: Center(
-          child: Text('Access denied. Admin privileges required.'),
-        ),
+        body: Center(child: Text('Access denied. Admin privileges required.')),
       );
     }
 
@@ -171,7 +171,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         items: const [
                           DropdownMenuItem(value: '', child: Text('All')),
                           DropdownMenuItem(value: 'user', child: Text('User')),
-                          DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                          DropdownMenuItem(
+                            value: 'admin',
+                            child: Text('Admin'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() => _roleFilter = value ?? '');
@@ -189,8 +192,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         items: const [
                           DropdownMenuItem(value: '', child: Text('All')),
-                          DropdownMenuItem(value: 'active', child: Text('Active')),
-                          DropdownMenuItem(value: 'banned', child: Text('Banned')),
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Active'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'banned',
+                            child: Text('Banned'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() => _statusFilter = value ?? '');
@@ -209,17 +218,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _users.isEmpty
-                    ? const Center(child: Text('No users found'))
-                    : ListView.builder(
-                        itemCount: _users.length,
-                        itemBuilder: (context, index) {
-                          final user = _users[index];
-                          return _UserListTile(
-                            user: user,
-                            onBan: () => _banUser(user),
-                          );
-                        },
-                      ),
+                ? const Center(child: Text('No users found'))
+                : ListView.builder(
+                    itemCount: _users.length,
+                    itemBuilder: (context, index) {
+                      final user = _users[index];
+                      return _UserListTile(
+                        user: user,
+                        onBan: () => _banUser(user),
+                      );
+                    },
+                  ),
           ),
 
           // Pagination
@@ -333,17 +342,11 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -356,10 +359,7 @@ class _UserListTile extends StatelessWidget {
   final User user;
   final VoidCallback onBan;
 
-  const _UserListTile({
-    required this.user,
-    required this.onBan,
-  });
+  const _UserListTile({required this.user, required this.onBan});
 
   @override
   Widget build(BuildContext context) {
@@ -447,7 +447,9 @@ class _BanUserDialogState extends State<_BanUserDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Are you sure you want to ${widget.user.isBanned ? 'unban' : 'ban'} ${widget.user.username}?'),
+          Text(
+            'Are you sure you want to ${widget.user.isBanned ? 'unban' : 'ban'} ${widget.user.username}?',
+          ),
           const SizedBox(height: 16),
           if (!widget.user.isBanned)
             TextField(
@@ -469,9 +471,7 @@ class _BanUserDialogState extends State<_BanUserDialog> {
           onPressed: () {
             Navigator.pop(context, _reasonController.text.trim());
           },
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.red,
-          ),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
           child: Text(widget.user.isBanned ? 'Unban' : 'Ban'),
         ),
       ],

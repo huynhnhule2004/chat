@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -31,7 +30,7 @@ class StorageService {
       );
 
       final result = await compute(_analyzeAppStorageIsolate, params);
-      
+
       return StorageInfo(
         totalBytes: totalBytes,
         freeBytes: freeBytes,
@@ -59,7 +58,7 @@ class StorageService {
 
       // 2. Phân tích từng chat
       final db = await openDatabase(params.dbPath);
-      
+
       // Lấy danh sách conversations
       final conversations = await db.query(
         'conversations',
@@ -71,12 +70,14 @@ class StorageService {
         final username = conv['username'] as String;
 
         // Đếm messages
-        final messageCount = Sqflite.firstIntValue(
-          await db.rawQuery(
-            'SELECT COUNT(*) FROM messages WHERE receiver_id = ? OR sender_id = ?',
-            [userId, userId],
-          ),
-        ) ?? 0;
+        final messageCount =
+            Sqflite.firstIntValue(
+              await db.rawQuery(
+                'SELECT COUNT(*) FROM messages WHERE receiver_id = ? OR sender_id = ?',
+                [userId, userId],
+              ),
+            ) ??
+            0;
 
         // Lấy danh sách files
         final messages = await db.query(
@@ -96,21 +97,24 @@ class StorageService {
 
           final fullPath = '${params.appDir}/$filePath';
           final file = File(fullPath);
-          
+
           if (await file.exists()) {
             final size = await file.length();
             final type = msg['file_type'] as String? ?? 'file';
             final timestamp = msg['timestamp'] as int;
 
-            files.add(FileStorageInfo(
-              path: filePath,
-              type: type,
-              size: size,
-              uploadedAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
-            ));
+            files.add(
+              FileStorageInfo(
+                path: filePath,
+                type: type,
+                size: size,
+                uploadedAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
+              ),
+            );
 
             // Phân loại cache vs media
-            if (filePath.contains('/cache/') || filePath.contains('/thumbnails/')) {
+            if (filePath.contains('/cache/') ||
+                filePath.contains('/thumbnails/')) {
               cacheSize += size;
             } else {
               mediaSize += size;
@@ -136,16 +140,13 @@ class StorageService {
       print('Error in isolate analysis: $e');
     }
 
-    return {
-      'totalSize': totalSize,
-      'chatStorages': chatStorages,
-    };
+    return {'totalSize': totalSize, 'chatStorages': chatStorages};
   }
 
   /// Xóa cache (Level 1)
   Future<int> clearCache() async {
     int deletedSize = 0;
-    
+
     try {
       final appDir = await getApplicationDocumentsDirectory();
       final cacheDir = Directory('${appDir.path}/cache');
@@ -164,7 +165,6 @@ class StorageService {
       // Tạo lại thư mục
       await cacheDir.create(recursive: true);
       await thumbnailsDir.create(recursive: true);
-
     } catch (e) {
       print('Error clearing cache: $e');
     }
@@ -213,7 +213,6 @@ class StorageService {
         where: 'user_id = ?',
         whereArgs: [userId],
       );
-
     } catch (e) {
       print('Error deleting chat history: $e');
     }
@@ -256,7 +255,6 @@ class StorageService {
         where: 'timestamp < ?',
         whereArgs: [cutoffTime],
       );
-
     } catch (e) {
       print('Error deleting old messages: $e');
     }
@@ -267,7 +265,7 @@ class StorageService {
   /// Helper: Xóa thư mục và tính tổng size
   Future<int> _deleteDirectory(Directory dir) async {
     int totalSize = 0;
-    
+
     try {
       final files = dir.listSync(recursive: true);
       for (final file in files) {

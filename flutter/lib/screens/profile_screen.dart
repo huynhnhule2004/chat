@@ -56,9 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update avatar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update avatar: $e')));
       }
     } finally {
       if (mounted) {
@@ -73,7 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<ChatProvider>().updateProfile(_emailController.text.trim());
+      await context.read<ChatProvider>().updateProfile(
+        _emailController.text.trim(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -82,9 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update email: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update email: $e')));
       }
     } finally {
       if (mounted) {
@@ -126,9 +128,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete avatar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete avatar: $e')));
       }
     } finally {
       if (mounted) {
@@ -140,9 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-      ),
+      appBar: AppBar(title: const Text('Profile')),
       body: Consumer<ChatProvider>(
         builder: (context, chatProvider, _) {
           final user = chatProvider.currentUser;
@@ -172,7 +172,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: const Center(
-                              child: CircularProgressIndicator(color: Colors.white),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -186,13 +188,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _isLoading ? null : () => _pickImage(ImageSource.gallery),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _pickImage(ImageSource.gallery),
                       icon: const Icon(Icons.photo_library, size: 18),
                       label: const Text('Gallery'),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
-                      onPressed: _isLoading ? null : () => _pickImage(ImageSource.camera),
+                      onPressed: _isLoading
+                          ? null
+                          : () => _pickImage(ImageSource.camera),
                       icon: const Icon(Icons.camera_alt, size: 18),
                       label: const Text('Camera'),
                     ),
@@ -270,7 +276,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter email';
                               }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                              if (!RegExp(
+                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                              ).hasMatch(value)) {
                                 return 'Please enter valid email';
                               }
                               return null;
@@ -285,7 +293,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ? const SizedBox(
                                       height: 20,
                                       width: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : const Text('Update Email'),
                             ),

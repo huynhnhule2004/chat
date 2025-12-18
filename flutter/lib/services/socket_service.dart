@@ -108,14 +108,28 @@ class SocketService {
     required String receiverId,
     required String content,
     String messageType = 'text',
+    bool isForwarded = false,
+    String? originalSenderId,
+    String? forwardedFrom,
+    String? fileUrl,
+    String? encryptedFileKey,
   }) {
     if (_socket != null && _isConnected) {
-      _socket!.emit('send_message', {
+      final payload = {
         'receiverId': receiverId,
         'content': content,
         'messageType': messageType,
-      });
-      print('✓ Message sent to: $receiverId');
+        'isForwarded': isForwarded,
+        if (originalSenderId != null) 'originalSenderId': originalSenderId,
+        if (forwardedFrom != null) 'forwardedFrom': forwardedFrom,
+        if (fileUrl != null) 'fileUrl': fileUrl,
+        if (encryptedFileKey != null) 'encryptedFileKey': encryptedFileKey,
+      };
+
+      _socket!.emit('send_message', payload);
+      print(
+        '✓ Message sent to: $receiverId ${isForwarded ? "(forwarded)" : ""}',
+      );
     } else {
       print('✗ Socket not connected. Cannot send message.');
     }
@@ -124,10 +138,7 @@ class SocketService {
   // Send typing indicator
   void sendTyping(String receiverId, bool isTyping) {
     if (_socket != null && _isConnected) {
-      _socket!.emit('typing', {
-        'receiverId': receiverId,
-        'isTyping': isTyping,
-      });
+      _socket!.emit('typing', {'receiverId': receiverId, 'isTyping': isTyping});
     }
   }
 

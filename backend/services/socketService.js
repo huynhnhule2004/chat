@@ -80,14 +80,28 @@ class SocketService {
 
   async handleSendMessage(socket, data) {
     try {
-      const { receiverId, content, messageType = 'text' } = data;
+      const { 
+        receiverId, 
+        content, 
+        messageType = 'text',
+        isForwarded = false,
+        originalSenderId,
+        forwardedFrom,
+        fileUrl,
+        encryptedFileKey,
+      } = data;
 
-      // Save encrypted message to database
+      // Save encrypted message to database (with forward fields)
       const message = await messageService.saveMessage({
         sender: socket.userId,
         receiver: receiverId,
         content, // Already encrypted by client
-        messageType
+        messageType,
+        isForwarded,
+        originalSenderId,
+        forwardedFrom,
+        fileUrl,
+        encryptedFileKey,
       });
 
       const roomId = this.getRoomId(socket.userId, receiverId);
@@ -99,7 +113,12 @@ class SocketService {
         receiver: receiverId,
         content: message.content,
         messageType: message.messageType,
-        timestamp: message.timestamp
+        timestamp: message.timestamp,
+        isForwarded: message.isForwarded,
+        originalSenderId: message.originalSenderId,
+        forwardedFrom: message.forwardedFrom,
+        fileUrl: message.fileUrl,
+        encryptedFileKey: message.encryptedFileKey,
       });
 
       // If receiver is online but not in room, send notification
@@ -107,11 +126,12 @@ class SocketService {
       if (receiverSocketId) {
         this.io.to(receiverSocketId).emit('new_message_notification', {
           senderId: socket.userId,
-          messageType: message.messageType
+          messageType: message.messageType,
+          isForwarded: message.isForwarded,
         });
       }
 
-      console.log(`✓ Message sent: ${socket.userId} -> ${receiverId}`);
+      console.log(`✓ Message sent: ${socket.userId} -> ${receiverId} ${isForwarded ? '(forwarded)' : ''}`);
     } catch (error) {
       console.error('Send message error:', error);
       socket.emit('message_error', { error: 'Failed to send message' });

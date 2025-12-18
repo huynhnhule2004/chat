@@ -107,10 +107,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     if (result != null && context.mounted) {
       Navigator.of(context).pushNamed(
         '/chat',
-        arguments: {
-          'userId': result['id'],
-          'username': result['username'],
-        },
+        arguments: {'userId': result['id'], 'username': result['username']},
       );
     }
   }
@@ -208,10 +205,7 @@ class UserSearchDelegate extends SearchDelegate {
   @override
   List<Widget> buildActions(BuildContext context) {
     return [
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () => query = '',
-      ),
+      IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
     ];
   }
 
@@ -235,9 +229,7 @@ class UserSearchDelegate extends SearchDelegate {
 
   Widget _buildSearchResults(BuildContext context) {
     if (query.isEmpty) {
-      return const Center(
-        child: Text('Search for users...'),
-      );
+      return const Center(child: Text('Search for users...'));
     }
 
     return FutureBuilder(
@@ -267,10 +259,7 @@ class UserSearchDelegate extends SearchDelegate {
               ),
               title: Text(user.username),
               onTap: () {
-                close(context, {
-                  'id': user.id,
-                  'username': user.username,
-                });
+                close(context, {'id': user.id, 'username': user.username});
               },
             );
           },

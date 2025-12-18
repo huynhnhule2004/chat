@@ -10,18 +10,15 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Settings'), elevation: 0),
       body: ListView(
         children: [
           // Dark Mode Section
           _buildSectionHeader(context, 'Appearance'),
           _DarkModeSettingTile(),
-          
+
           const Divider(),
-          
+
           // Storage Section
           _buildSectionHeader(context, 'Storage & Data'),
           _StorageOverviewTile(),
@@ -39,9 +36,9 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          
+
           const Divider(),
-          
+
           // Account Section
           _buildSectionHeader(context, 'Account'),
           _buildSettingTile(
@@ -53,7 +50,7 @@ class SettingsScreen extends StatelessWidget {
               Navigator.of(context).pushNamed('/profile');
             },
           ),
-          
+
           Consumer<ChatProvider>(
             builder: (context, chatProvider, _) {
               if (chatProvider.currentUser?.isAdmin == true) {
@@ -70,9 +67,9 @@ class SettingsScreen extends StatelessWidget {
               return const SizedBox.shrink();
             },
           ),
-          
+
           const Divider(),
-          
+
           // About Section
           _buildSectionHeader(context, 'About'),
           _buildSettingTile(
@@ -84,9 +81,9 @@ class SettingsScreen extends StatelessWidget {
               _showAboutDialog(context);
             },
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Logout Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -107,7 +104,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 32),
         ],
       ),
@@ -207,7 +204,9 @@ class _DarkModeSettingTile extends StatelessWidget {
           ),
           title: const Text('Dark Mode'),
           subtitle: Text(
-            themeProvider.isDarkMode ? 'Dark theme enabled' : 'Light theme enabled',
+            themeProvider.isDarkMode
+                ? 'Dark theme enabled'
+                : 'Light theme enabled',
           ),
           value: themeProvider.isDarkMode,
           onChanged: (value) {
@@ -225,10 +224,8 @@ class _StorageOverviewTile extends StatelessWidget {
     return FutureBuilder<String>(
       future: _getQuickStorageInfo(),
       builder: (context, snapshot) {
-        final subtitle = snapshot.hasData 
-            ? snapshot.data!
-            : 'Loading...';
-        
+        final subtitle = snapshot.hasData ? snapshot.data! : 'Loading...';
+
         return ListTile(
           leading: Container(
             padding: const EdgeInsets.all(8),
