@@ -53,12 +53,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             onPressed: () => _showUserSearch(context),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<ChatProvider>().logout();
-              if (context.mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/settings');
             },
           ),
         ],
@@ -68,7 +66,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           final conversations = chatProvider.conversations;
 
           if (conversations.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -106,7 +104,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       delegate: UserSearchDelegate(),
     );
 
-    if (result != null && mounted) {
+    if (result != null && context.mounted) {
       Navigator.of(context).pushNamed(
         '/chat',
         arguments: {

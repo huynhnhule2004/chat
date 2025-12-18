@@ -13,6 +13,7 @@ const messagesRoutes = require('./routes/messages');
 const filesRoutes = require('./routes/files');
 const profileRoutes = require('./routes/profile');
 const adminRoutes = require('./routes/admin');
+const storageRoutes = require('./routes/storage');
 
 // Initialize Express app
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', storageRoutes);
 
 // Serve uploaded files (avatars, files, etc.)
 app.use('/uploads', express.static('uploads'));
