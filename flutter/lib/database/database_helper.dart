@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // Increment version for schema changes
+      version: 3, // v3: Add group chat support (rooms + room_members)
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -41,7 +41,8 @@ class DatabaseHelper {
       CREATE TABLE messages (
         id TEXT PRIMARY KEY,
         sender_id TEXT NOT NULL,
-        receiver_id TEXT NOT NULL,
+        receiver_id TEXT,
+        room_id TEXT,
         content TEXT NOT NULL,
         message_type TEXT NOT NULL DEFAULT 'text',
         timestamp INTEGER NOT NULL,
@@ -53,8 +54,11 @@ class DatabaseHelper {
         file_url TEXT,
         encrypted_file_key TEXT,
         file_size INTEGER,
+        iv TEXT,
+        auth_tag TEXT,
         FOREIGN KEY (sender_id) REFERENCES users (id),
-        FOREIGN KEY (receiver_id) REFERENCES users (id)
+        FOREIGN KEY (receiver_id) REFERENCES users (id),
+        FOREIGN KEY (room_id) REFERENCES rooms (id)
       )
     ''');
 
@@ -77,11 +81,66 @@ class DatabaseHelper {
         created_at INTEGER NOT NULL
       )
     ''');
+
+    // Rooms table (group chats)
+    await db.execute('''
+      CREATE TABLE rooms (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        avatar TEXT,
+        description TEXT,
+        type TEXT NOT NULL DEFAULT 'group',
+        owner_id TEXT NOT NULL,
+        is_password_protected INTEGER NOT NULL DEFAULT 0,
+        member_count INTEGER NOT NULL DEFAULT 0,
+        session_key_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        last_message_at TEXT,
+        FOREIGN KEY (owner_id) REFERENCES users (id)
+      )
+    ''');
+
+    // Room members table (stores encrypted session keys)
+    await db.execute('''
+      CREATE TABLE room_members (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        encrypted_session_key TEXT NOT NULL,
+        session_key_version INTEGER NOT NULL DEFAULT 1,
+        role TEXT NOT NULL DEFAULT 'member',
+        joined_at TEXT NOT NULL,
+        unread_count INTEGER NOT NULL DEFAULT 0,
+        is_muted INTEGER NOT NULL DEFAULT 0,
+        muted_until TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (room_id) REFERENCES rooms (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        UNIQUE(room_id, user_id)
+      )
+    ''');
+
+    // Create indexes for group chat
+    await db.execute('''
+      CREATE INDEX idx_rooms_owner ON rooms (owner_id)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_room_members_room ON room_members (room_id, is_active)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_room_members_user ON room_members (user_id, is_active)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_messages_room ON messages (room_id, timestamp DESC)
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Upgrade from v1 to v2: Add forward message fields
     if (oldVersion < 2) {
-      // Add forward message fields
       await db.execute(
         'ALTER TABLE messages ADD COLUMN is_forwarded INTEGER NOT NULL DEFAULT 0',
       );
@@ -94,6 +153,62 @@ class DatabaseHelper {
         'ALTER TABLE messages ADD COLUMN encrypted_file_key TEXT',
       );
       await db.execute('ALTER TABLE messages ADD COLUMN file_size INTEGER');
+    }
+
+    // Upgrade from v2 to v3: Add group chat support
+    if (oldVersion < 3) {
+      // Add group fields to messages table
+      await db.execute('ALTER TABLE messages ADD COLUMN room_id TEXT');
+      await db.execute('ALTER TABLE messages ADD COLUMN iv TEXT');
+      await db.execute('ALTER TABLE messages ADD COLUMN auth_tag TEXT');
+
+      // Create rooms table
+      await db.execute('''
+        CREATE TABLE rooms (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          avatar TEXT,
+          description TEXT,
+          type TEXT NOT NULL DEFAULT 'group',
+          owner_id TEXT NOT NULL,
+          is_password_protected INTEGER NOT NULL DEFAULT 0,
+          member_count INTEGER NOT NULL DEFAULT 0,
+          session_key_version INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          last_message_at TEXT,
+          FOREIGN KEY (owner_id) REFERENCES users (id)
+        )
+      ''');
+
+      // Create room_members table
+      await db.execute('''
+        CREATE TABLE room_members (
+          id TEXT PRIMARY KEY,
+          room_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          encrypted_session_key TEXT NOT NULL,
+          session_key_version INTEGER NOT NULL DEFAULT 1,
+          role TEXT NOT NULL DEFAULT 'member',
+          joined_at TEXT NOT NULL,
+          unread_count INTEGER NOT NULL DEFAULT 0,
+          is_muted INTEGER NOT NULL DEFAULT 0,
+          muted_until TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          FOREIGN KEY (room_id) REFERENCES rooms (id),
+          FOREIGN KEY (user_id) REFERENCES users (id),
+          UNIQUE(room_id, user_id)
+        )
+      ''');
+
+      // Create indexes for group chat
+      await db.execute(
+          'CREATE INDEX idx_rooms_owner ON rooms (owner_id)');
+      await db.execute(
+          'CREATE INDEX idx_room_members_room ON room_members (room_id, is_active)');
+      await db.execute(
+          'CREATE INDEX idx_room_members_user ON room_members (user_id, is_active)');
+      await db.execute(
+          'CREATE INDEX idx_messages_room ON messages (room_id, timestamp DESC)');
     }
   }
 
@@ -204,6 +319,16 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> updateMessageStatus(String messageId, bool isSent) async {
+    final db = await database;
+    await db.update(
+      'messages',
+      {'is_sent': isSent ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
   // Encryption key operations
   Future<void> saveSharedKey(String userId, String sharedKey) async {
     final db = await database;
@@ -236,4 +361,125 @@ class DatabaseHelper {
     final db = await database;
     await db.close();
   }
-}
+  // ============================================================
+  // GROUP CHAT DATABASE OPERATIONS
+  // ============================================================
+
+  // Room operations
+  Future<void> insertRoom(Map<String, dynamic> room) async {
+    final db = await database;
+    
+    await db.insert(
+      'rooms',
+      room,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getRoom(String roomId) async {
+    final db = await database;
+    final results = await db.query(
+      'rooms',
+      where: 'id = ?',
+      whereArgs: [roomId],
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<List<Map<String, dynamic>>> getUserRooms(String userId) async {
+    final db = await database;
+    // Join rooms with room_members to get user's rooms
+    final results = await db.rawQuery('''
+      SELECT r.* FROM rooms r
+      INNER JOIN room_members rm ON r.id = rm.room_id
+      WHERE rm.user_id = ? AND rm.is_active = 1
+      ORDER BY r.last_message_at DESC
+    ''', [userId]);
+    return results;
+  }
+
+  Future<void> updateRoom(String roomId, Map<String, dynamic> data) async {
+    final db = await database;
+    await db.update(
+      'rooms',
+      data,
+      where: 'id = ?',
+      whereArgs: [roomId],
+    );
+  }
+
+  Future<void> deleteRoom(String roomId) async {
+    final db = await database;
+    await db.delete(
+      'rooms',
+      where: 'id = ?',
+      whereArgs: [roomId],
+    );
+  }
+
+  // RoomMember operations
+  Future<void> insertRoomMember(Map<String, dynamic> member) async {
+    final db = await database;
+    await db.insert(
+      'room_members',
+      member,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<Map<String, dynamic>?> getRoomMember(
+      String roomId, String userId) async {
+    final db = await database;
+    final results = await db.query(
+      'room_members',
+      where: 'room_id = ? AND user_id = ?',
+      whereArgs: [roomId, userId],
+    );
+    return results.isNotEmpty ? results.first : null;
+  }
+
+  Future<List<Map<String, dynamic>>> getRoomMembers(String roomId) async {
+    final db = await database;
+    final results = await db.query(
+      'room_members',
+      where: 'room_id = ? AND is_active = 1',
+      whereArgs: [roomId],
+    );
+    return results;
+  }
+
+  Future<void> updateRoomMember(
+      String roomId, String userId, Map<String, dynamic> data) async {
+    final db = await database;
+    await db.update(
+      'room_members',
+      data,
+      where: 'room_id = ? AND user_id = ?',
+      whereArgs: [roomId, userId],
+    );
+  }
+
+  Future<void> deactivateRoomMember(String roomId, String userId) async {
+    final db = await database;
+    await db.update(
+      'room_members',
+      {'is_active': 0},
+      where: 'room_id = ? AND user_id = ?',
+      whereArgs: [roomId, userId],
+    );
+  }
+
+  // Get room messages
+  Future<List<Map<String, dynamic>>> getRoomMessages(String roomId,
+      {int limit = 50, int offset = 0}) async {
+    final db = await database;
+    final results = await db.query(
+      'messages',
+      where: 'room_id = ?',
+      whereArgs: [roomId],
+      orderBy: 'timestamp DESC',
+      limit: limit,
+      offset: offset,
+    );
+    return results.reversed.toList(); // Return in chronological order
+  }}

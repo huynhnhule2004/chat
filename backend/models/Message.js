@@ -9,7 +9,14 @@ const MessageSchema = new mongoose.Schema({
   receiver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null // null for group messages
+  },
+
+  // Group chat support
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room',
+    default: null // null for 1-1 messages
   },
   content: {
     type: String,
@@ -20,6 +27,17 @@ const MessageSchema = new mongoose.Schema({
     enum: ['text', 'image', 'video', 'file'],
     default: 'text'
   },
+  // E2EE fields for group chat (AES-GCM)
+  iv: {
+    type: String, // Initialization vector for AES-GCM
+    default: null
+  },
+
+  authTag: {
+    type: String, // Authentication tag for AES-GCM integrity check
+    default: null
+  },
+
   timestamp: {
     type: Date,
     default: Date.now

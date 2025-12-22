@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:async';
 import '../providers/chat_provider.dart';
@@ -23,7 +22,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
   Timer? _typingTimer;
+  bool _isSending = false; // Prevent duplicate sends
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     _typingTimer?.cancel();
     super.dispose();
   }
@@ -54,6 +56,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    // Prevent duplicate sends
+    if (_isSending) return;
+    _isSending = true;
+
     _messageController.clear();
     context.read<ChatProvider>().sendTyping(widget.userId, false);
 
@@ -64,22 +70,28 @@ class _ChatScreenState extends State<ChatScreen> {
         'text',
       );
       _scrollToBottom();
+      // Auto-focus for next message
+      _focusNode.requestFocus();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
       }
+    } finally {
+      _isSending = false;
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(source: source);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
 
-      if (image != null) {
-        await _uploadAndSendFile(image.path, 'image');
+      if (result != null && result.files.single.path != null) {
+        await _uploadAndSendFile(result.files.single.path!, 'image');
       }
     } catch (e) {
       if (mounted) {
@@ -229,6 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
+                    focusNode: _focusNode,
                     decoration: const InputDecoration(
                       hintText: 'Type a message...',
                       border: InputBorder.none,
@@ -259,24 +272,16 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_camera),
-              title: const Text('Camera'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Gallery'),
+              title: const Text('Gallery / Images'),
               onTap: () {
                 Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
+                _pickImage();
               },
             ),
             ListTile(
               leading: const Icon(Icons.insert_drive_file),
-              title: const Text('File'),
+              title: const Text('Files'),
               onTap: () {
                 Navigator.pop(context);
                 _pickFile();
