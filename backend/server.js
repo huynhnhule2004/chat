@@ -14,6 +14,7 @@ const filesRoutes = require('./routes/files');
 const profileRoutes = require('./routes/profile');
 const adminRoutes = require('./routes/admin');
 const storageRoutes = require('./routes/storage');
+const groupsRoutes = require('./routes/groups'); // Group chat routes
 
 // Initialize Express app
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/files', filesRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', storageRoutes);
+app.use('/api/groups', groupsRoutes); // Group chat endpoints
 
 // Serve uploaded files (avatars, files, etc.)
 app.use('/uploads', express.static('uploads'));
@@ -63,14 +65,23 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════╗
 ║  E2EE Chat Server                          ║
 ║  Port: ${PORT}                              ║
 ║  Environment: ${process.env.NODE_ENV || 'development'}              ║
+║  Socket.IO: Ready                          ║
 ╚════════════════════════════════════════════╝
   `);
+  console.log(`✓ Server listening on http://localhost:${PORT}`);
+  console.log(`✓ Socket.IO endpoint: http://localhost:${PORT}/socket.io/`);
+}).on('error', (err) => {
+  console.error('❌ Server failed to start:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+  }
+  process.exit(1);
 });
 
 module.exports = { app, server, io };

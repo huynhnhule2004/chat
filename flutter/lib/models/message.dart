@@ -19,6 +19,11 @@ class Message {
   encryptedFileKey; // Symmetric key encrypted with recipient's public key
   final int? fileSize;
 
+  // Group chat fields
+  final String? roomId;
+  final String? iv; // Initialization vector for AES-GCM
+  final String? authTag; // Authentication tag for AES-GCM
+
   Message({
     required this.id,
     required this.senderId,
@@ -34,12 +39,25 @@ class Message {
     this.fileUrl,
     this.encryptedFileKey,
     this.fileSize,
+    this.roomId,
+    this.iv,
+    this.authTag,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    // Parse sender - can be String or Object {id, username, ...}
+    String senderId;
+    if (json['sender'] is String) {
+      senderId = json['sender'];
+    } else if (json['sender'] is Map) {
+      senderId = json['sender']['id'] ?? json['sender']['_id'] ?? '';
+    } else {
+      senderId = json['senderId'] ?? '';
+    }
+
     return Message(
       id: json['id'] ?? json['_id'] ?? '',
-      senderId: json['sender'] ?? json['senderId'] ?? '',
+      senderId: senderId,
       receiverId: json['receiver'] ?? json['receiverId'] ?? '',
       content: json['content'] ?? '',
       messageType: json['messageType'] ?? 'text',
@@ -54,6 +72,9 @@ class Message {
       fileUrl: json['fileUrl'],
       encryptedFileKey: json['encryptedFileKey'],
       fileSize: json['fileSize'],
+      roomId: json['roomId'],
+      iv: json['iv'],
+      authTag: json['authTag'],
     );
   }
 
@@ -73,6 +94,9 @@ class Message {
       if (fileUrl != null) 'fileUrl': fileUrl,
       if (encryptedFileKey != null) 'encryptedFileKey': encryptedFileKey,
       if (fileSize != null) 'fileSize': fileSize,
+      if (roomId != null) 'roomId': roomId,
+      if (iv != null) 'iv': iv,
+      if (authTag != null) 'authTag': authTag,
     };
   }
 
@@ -89,6 +113,9 @@ class Message {
       'is_forwarded': isForwarded ? 1 : 0,
       'original_sender_id': originalSenderId,
       'forwarded_from': forwardedFrom,
+      'room_id': roomId,
+      'iv': iv,
+      'auth_tag': authTag,
       'file_url': fileUrl,
       'encrypted_file_key': encryptedFileKey,
       'file_size': fileSize,
@@ -108,6 +135,9 @@ class Message {
       isForwarded: map['is_forwarded'] == 1,
       originalSenderId: map['original_sender_id'],
       forwardedFrom: map['forwarded_from'],
+      roomId: map['room_id'],
+      iv: map['iv'],
+      authTag: map['auth_tag'],
       fileUrl: map['file_url'],
       encryptedFileKey: map['encrypted_file_key'],
       fileSize: map['file_size'],
@@ -126,9 +156,9 @@ class Message {
     bool? isForwarded,
     String? originalSenderId,
     String? forwardedFrom,
-    String? fileUrl,
-    String? encryptedFileKey,
-    int? fileSize,
+    String? roomId,
+    String? iv,
+    String? authTag,
   }) {
     return Message(
       id: id ?? this.id,
@@ -145,6 +175,9 @@ class Message {
       fileUrl: fileUrl ?? this.fileUrl,
       encryptedFileKey: encryptedFileKey ?? this.encryptedFileKey,
       fileSize: fileSize ?? this.fileSize,
+      roomId: roomId ?? this.roomId,
+      iv: iv ?? this.iv,
+      authTag: authTag ?? this.authTag,
     );
   }
 }

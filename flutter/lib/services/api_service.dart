@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
+import 'crypto_service.dart';
 
 class ApiService {
   static final ApiService instance = ApiService._init();
@@ -21,11 +22,17 @@ class ApiService {
         onRequest: (options, handler) {
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
+            print('🔐 Sending request to ${options.path} with token');
+          } else {
+            print('⚠️ Sending request to ${options.path} WITHOUT token');
           }
           return handler.next(options);
         },
         onError: (error, handler) {
-          print('API Error: ${error.message}');
+          print('API Error on ${error.requestOptions.path}: ${error.response?.statusCode} - ${error.message}');
+          if (error.response != null) {
+            print('Response data: ${error.response?.data}');
+          }
           return handler.next(error);
         },
       ),
@@ -127,20 +134,6 @@ class ApiService {
     try {
       final response = await _dio.get('/messages');
       return response.data['conversations'];
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // File endpoints
-  Future<Map<String, dynamic>> uploadFile(String filePath) async {
-    try {
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath),
-      });
-
-      final response = await _dio.post('/files/upload', data: formData);
-      return response.data;
     } catch (e) {
       rethrow;
     }
@@ -274,5 +267,180 @@ class ApiService {
   String getAvatarUrl(String? avatar) {
     if (avatar == null || avatar.isEmpty) return '';
     return '${AppConfig.baseUrl}$avatar';
+  }
+
+  // Group chat endpoints
+  Future<Map<String, dynamic>> createGroup({
+    required String name,
+    String? avatar,
+    String? description,
+    String? password,
+    bool isPrivate = true,
+    required List<Map<String, String>> encryptedSessionKeys,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/groups/create',
+        data: {
+          'name': name,
+          if (avatar != null) 'avatar': avatar,
+          if (description != null && description.isNotEmpty) 'description': description,
+          if (password != null && password.isNotEmpty) 'password': password,
+          'isPrivate': isPrivate,
+          'encryptedSessionKeys': encryptedSessionKeys,
+        },
+      );
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> joinGroup({
+    required String roomId,
+    String? password,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/groups/join',
+        data: {
+          'roomId': roomId,
+          if (password != null) 'password': password,
+        },
+      );
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getMyGroups() async {
+    try {
+      final response = await _dio.get('/groups');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getGroupDetails(String roomId) async {
+    try {
+      final response = await _dio.get('/groups/$roomId');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> discoverPublicGroups() async {
+    try {
+      final response = await _dio.get('/groups/discover/public');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> kickMember({
+    required String roomId,
+    required String memberIdToKick,
+    required List<Map<String, String>> newEncryptedSessionKeys,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/groups/$roomId/kick',
+        data: {
+          'memberIdToKick': memberIdToKick,
+          'newEncryptedSessionKeys': newEncryptedSessionKeys,
+        },
+      );
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> leaveGroup(String roomId) async {
+    try {
+      final response = await _dio.post('/groups/$roomId/leave');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteGroup(String roomId) async {
+    try {
+      final response = await _dio.delete('/groups/$roomId');
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> addGroupMember({
+    required String roomId,
+    required String userId,
+    required String encryptedSessionKey,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/groups/$roomId/add-member',
+        data: {
+          'userId': userId,
+          'encryptedSessionKey': encryptedSessionKey,
+        },
+      );
+      return response.data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
+  Future<String> getPrivateKey() async {
+    final privateKey = await CryptoService.instance.getRSAPrivateKey();
+    if (privateKey == null) {
+      throw Exception('RSA private key not found. Please generate keys first.');
+    }
+    return privateKey;
+  }
+
+  Future<String> getPublicKey() async {
+    final publicKey = await CryptoService.instance.getRSAPublicKey();
+    if (publicKey == null) {
+      throw Exception('RSA public key not found. Please generate keys first.');
+    }
+    return publicKey;
+  }
+
+  // Get current user profile
+  Future<Map<String, dynamic>> getMyProfile() async {
+    try {
+      final response = await _dio.get('/profile/me');
+      return response.data;
+    } catch (e) {
+      print('Error getting profile: $e');
+      rethrow;
+    }
+  }
+
+  // Alias for backward compatibility
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    return await getMyProfile();
+  }
+
+  // Upload file
+  Future<Map<String, dynamic>> uploadFile(String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _dio.post('/files/upload', data: formData);
+      return response.data;
+    } catch (e) {
+      print('Error uploading file: $e');
+      rethrow;
+    }
   }
 }

@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../services/crypto_service.dart';
 import '../database/database_helper.dart';
+import '../utils/key_migration_helper.dart';
 
 class ChatProvider with ChangeNotifier {
   User? _currentUser;
@@ -37,10 +38,25 @@ class ChatProvider with ChangeNotifier {
       try {
         final message = Message.fromJson(data);
 
+        // Skip if this is our own message (already added when sending)
+        if (message.senderId == _currentUser?.id) {
+          // Just update the message status to sent`1 ,
+          await _db.updateMessageStatus(message.id, true);
+          
+          // Update in memory
+          final receiverId = message.receiverId;
+          if (_messagesByUser.containsKey(receiverId)) {
+            final index = _messagesByUser[receiverId]!.indexWhere((m) => m.id == message.id || m.timestamp.isAtSameMomentAs(message.timestamp));
+            if (index != -1) {
+              _messagesByUser[receiverId]![index] = _messagesByUser[receiverId]![index].copyWith(isSent: true);
+            }
+          }
+          notifyListeners();
+          return;
+        }
+
         // Get shared key for this user
-        final otherUserId = message.senderId == _currentUser?.id
-            ? message.receiverId
-            : message.senderId;
+        final otherUserId = message.senderId;
 
         String? sharedKey = _sharedKeys[otherUserId];
         if (sharedKey == null) {
@@ -101,21 +117,26 @@ class ChatProvider with ChangeNotifier {
     try {
       print('Starting registration for: $username');
 
-      // Generate key pair
-      final keys = await _cryptoService.generateKeyPair();
-      print('Generated keys - publicKey length: ${keys['publicKey']?.length}');
+      // Generate ECDH key pair (for 1-1 messaging)
+      final ecdhKeys = await _cryptoService.generateKeyPair();
+      print('Generated ECDH keys - publicKey length: ${ecdhKeys['publicKey']?.length}');
 
-      if (keys['publicKey'] == null || keys['publicKey']!.isEmpty) {
-        throw Exception('Failed to generate public key');
+      if (ecdhKeys['publicKey'] == null || ecdhKeys['publicKey']!.isEmpty) {
+        throw Exception('Failed to generate ECDH public key');
       }
 
-      // Register with server
+      // Generate RSA key pair (for group chat session keys)
+      print('Generating RSA keys for group chat...');
+      final rsaKeys = await _cryptoService.generateRSAKeyPair();
+      print('Generated RSA keys - publicKey length: ${rsaKeys['publicKey']?.length}');
+
+      // Register with server (send ECDH public key for backward compatibility)
       print('Sending registration request...');
       final response = await _apiService.register(
         username,
         email,
         password,
-        keys['publicKey']!,
+        ecdhKeys['publicKey']!,
       );
       print('Registration response received');
 
@@ -148,6 +169,9 @@ class ChatProvider with ChangeNotifier {
 
       // Set API token
       _apiService.setToken(_token!);
+
+      // Ensure RSA keys exist (for old users who registered before group chat)
+      await KeyMigrationHelper.ensureRSAKeysExist();
 
       // Connect socket
       _socketService.connect(_token!);
@@ -182,6 +206,7 @@ class ChatProvider with ChangeNotifier {
     try {
       // Load from local database first (fast)
       final localConvs = await _db.getConversations(_currentUser!.id);
+      print('📋 Loaded ${localConvs.length} conversations from database');
       _conversations = localConvs
           .map((c) => Conversation.fromDatabase(c))
           .toList();

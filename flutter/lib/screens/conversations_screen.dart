@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/chat_provider.dart';
 import '../models/conversation.dart';
 import '../widgets/user_avatar.dart';
+import 'groups/group_list_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
   const ConversationsScreen({super.key});
@@ -94,6 +95,31 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             },
           );
         },
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'groups',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const GroupListScreen(),
+                ),
+              );
+            },
+            child: const Icon(Icons.group),
+            tooltip: 'Groups',
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'search',
+            onPressed: () => _showUserSearch(context),
+            child: const Icon(Icons.person_add),
+            tooltip: 'New Chat',
+          ),
+        ],
       ),
     );
   }
