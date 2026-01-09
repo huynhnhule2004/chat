@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # MongoDB Database (Development)
+  mongodb:
+    image: mongo:7-jammy
+    container_name: chat_mongodb_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: chatapp_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - chat_dev_network
+
+  # Backend API Server (Development with hot reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      args:
+        NODE_ENV: development
+    container_name: chat_backend_dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "9229:9229"  # Debug port
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/chatapp_dev?authSource=admin
+      JWT_SECRET: dev-secret-key-not-for-production
+      UPLOAD_DIR: ./uploads
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_dev_uploads:/app/uploads
+    depends_on:
+      - mongodb
+    networks:
+      - chat_dev_network
+    command: ["npm", "run", "dev"]
+
+  # Data Seeder for Development
+  seeder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: chat_seeder_dev
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/chatapp_dev?authSource=admin
+      JWT_SECRET: dev-secret-key-not-for-production
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: ["npm", "run", "seed"]
+    depends_on:
+      - mongodb
+      - backend
+    networks:
+      - chat_dev_network
+    restart: "no"
+
+  # Redis for Session Storage (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: chat_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - chat_dev_network
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+  backend_dev_uploads:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  chat_dev_network:
+    driver: bridge

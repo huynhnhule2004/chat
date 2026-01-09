@@ -1,0 +1,52 @@
+# Flutter/Dart specific
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Test files
+test/
+integration_test/
+
+# Coverage
+coverage/
+
+# Environment files
+.env*
+
+# Temporary files
+temp/
+tmp/
+
+# Web specific
+web/icons/
+web/favicon.png
+web/manifest.json
