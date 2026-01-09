@@ -1,0 +1,33 @@
+# Development Dockerfile with hot reload
+FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies including devDependencies
+RUN npm install
+
+# Install nodemon globally for development
+RUN npm install -g nodemon
+
+# Copy application code
+COPY . .
+
+# Create uploads directory
+RUN mkdir -p uploads/avatars && chmod -R 755 uploads
+
+# Expose ports (5000 for app, 9229 for debugging)
+EXPOSE 5000 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+
+# Development command with debugging enabled
+CMD ["npm", "run", "dev"]

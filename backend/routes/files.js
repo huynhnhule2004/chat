@@ -5,6 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const authMiddleware = require('../middleware/auth');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Files
+ *   description: File upload and management endpoints
+ */
+
 // Create uploads directory if it doesn't exist
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -29,6 +36,72 @@ const upload = multer({
   }
 });
 
+/**
+ * @swagger
+ * /api/files/upload:
+ *   post:
+ *     summary: Upload a file
+ *     description: Upload a file (image, document, etc.) to be shared in messages
+ *     tags: [Files]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: File to upload (max 100MB)
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: File uploaded successfully
+ *                 fileUrl:
+ *                   type: string
+ *                   description: Relative URL to access the file
+ *                   example: /uploads/1234567890-123456789.jpg
+ *                 filename:
+ *                   type: string
+ *                   description: Generated filename on server
+ *                   example: 1234567890-123456789.jpg
+ *                 originalName:
+ *                   type: string
+ *                   description: Original filename
+ *                   example: photo.jpg
+ *                 size:
+ *                   type: number
+ *                   description: File size in bytes
+ *                   example: 1024000
+ *                 mimetype:
+ *                   type: string
+ *                   description: MIME type of the file
+ *                   example: image/jpeg
+ *       400:
+ *         description: No file uploaded or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       413:
+ *         description: File too large (max 100MB)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 // Upload file
 router.post('/upload', authMiddleware, upload.single('file'), (req, res) => {
   try {

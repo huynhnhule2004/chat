@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Backend API Server (using external MongoDB system)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat_backend_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://chate2ee_user:ChatE2EEPass123!@127.0.0.1:27017/chate2ee?authSource=chate2ee
+      JWT_SECRET: prod-super-secret-jwt-key-change-me-123
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE: 104857600
+      MAX_AVATAR_SIZE: 2097152
+      CORS_ORIGIN: "*"
+      API_RATE_LIMIT: 100
+      AUTH_RATE_LIMIT: 10
+      LOG_LEVEL: info
+    volumes:
+      - uploads_data:/app/uploads
+    network_mode: "host"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  uploads_data:
+    driver: local
+    name: chat_backend_uploads

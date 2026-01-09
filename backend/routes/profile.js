@@ -6,6 +6,13 @@ const fs = require('fs');
 const authMiddleware = require('../middleware/auth');
 const User = require('../models/User');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Profile
+ *   description: User profile management endpoints
+ */
+
 // Create avatars directory if it doesn't exist
 const avatarsDir = path.join(__dirname, '../uploads/avatars');
 if (!fs.existsSync(avatarsDir)) {
@@ -42,6 +49,30 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
+/**
+ * @swagger
+ * /api/profile/me:
+ *   get:
+ *     summary: Get current user profile
+ *     description: Retrieve the profile information of the currently authenticated user
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 // Get current user profile
 router.get('/me', authMiddleware, async (req, res) => {
   try {
@@ -58,6 +89,60 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/profile/upload-avatar:
+ *   post:
+ *     summary: Upload user avatar
+ *     description: Upload and set a new avatar image for the current user (max 2MB, images only)
+ *     tags: [Profile]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: Avatar image file (JPEG, PNG, GIF, WebP - max 2MB)
+ *     responses:
+ *       200:
+ *         description: Avatar uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Avatar uploaded successfully
+ *                 avatarUrl:
+ *                   type: string
+ *                   description: URL to the new avatar
+ *                   example: /uploads/avatars/avatar-60f7b3b3b3b3b3b3b3b3b3b3-1234567890.jpg
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: No file uploaded or invalid file type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       413:
+ *         description: File too large (max 2MB)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 // Upload avatar
 router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
   try {

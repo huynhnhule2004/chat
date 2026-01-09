@@ -3,6 +3,126 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Xác thực và đăng ký tài khoản
+ */
+
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Đăng ký tài khoản mới
+ *     description: |
+ *       Tạo tài khoản người dùng mới với thông tin cơ bản và RSA public key.
+ *       
+ *       **Lưu ý**: Client phải tạo cặp RSA key trước khi đăng ký.
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, email, password, publicKey]
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 30
+ *                 pattern: '^[a-zA-Z0-9_]+$'
+ *                 description: Tên đăng nhập duy nhất
+ *                 example: john_doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Địa chỉ email
+ *                 example: john.doe@example.com
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 description: Mật khẩu (tối thiểu 6 ký tự)
+ *                 example: mypassword123
+ *               publicKey:
+ *                 type: string
+ *                 description: RSA public key định dạng PEM
+ *                 example: |-
+ *                   -----BEGIN PUBLIC KEY-----
+ *                   MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+ *                   -----END PUBLIC KEY-----
+ *     responses:
+ *       201:
+ *         description: Đăng ký thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       409:
+ *         description: Username hoặc email đã tồn tại
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               error: Username already exists
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Đăng nhập
+ *     description: |
+ *       Đăng nhập với username/email và password để nhận JWT token.
+ *       
+ *       **Token** được sử dụng cho tất cả API calls khác thông qua header:
+ *       `Authorization: Bearer <token>`
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [login, password]
+ *             properties:
+ *               login:
+ *                 type: string
+ *                 description: Username hoặc email
+ *                 example: john_doe
+ *               password:
+ *                 type: string
+ *                 description: Mật khẩu
+ *                 example: mypassword123
+ *     responses:
+ *       200:
+ *         description: Đăng nhập thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         description: Thông tin đăng nhập không đúng
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *             example:
+ *               error: Invalid credentials
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+
 // Register
 router.post('/register', async (req, res) => {
   try {

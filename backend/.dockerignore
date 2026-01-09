@@ -1,0 +1,45 @@
+# Node modules
+node_modules
+npm-debug.log*
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.vscode/
+.idea/
+*.log
+
+# Testing files
+test/
+coverage/
+.nyc_output
+
+# Temporary files
+temp/
+tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Uploads (will be created by container)
+uploads/*
+!uploads/.gitkeep

@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # MongoDB Database for Development
+  mongodb:
+    image: mongo:7-jammy
+    container_name: chat_backend_mongodb_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: chatapp_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - backend_dev_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://admin:password123@localhost:27017/chatapp_dev --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Backend API Server with Hot Reload
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: chat_backend_api_dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+      - "9229:9229"  # Debug port
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/chatapp_dev?authSource=admin
+      JWT_SECRET: dev-secret-key-not-for-production
+      UPLOAD_DIR: /app/uploads
+      DEBUG: "app:*"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - uploads_dev_data:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - backend_dev_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Data Seeder for Development
+  seeder:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: chat_backend_seeder_dev
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/chatapp_dev?authSource=admin
+      JWT_SECRET: dev-secret-key-not-for-production
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ["npm", "run", "seed"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - backend_dev_network
+    restart: "no"
+
+  # Redis for Development
+  redis:
+    image: redis:7-alpine
+    container_name: chat_backend_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - backend_dev_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # MongoDB Admin UI (optional)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: chat_backend_mongo_express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    depends_on:
+      - mongodb
+    networks:
+      - backend_dev_network
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+    name: chat_backend_mongodb_dev_data
+  uploads_dev_data:
+    driver: local
+    name: chat_backend_uploads_dev
+  redis_dev_data:
+    driver: local
+    name: chat_backend_redis_dev_data
+
+networks:
+  backend_dev_network:
+    driver: bridge
+    name: chat_backend_dev_network

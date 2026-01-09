@@ -1,10 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
 const cors = require('cors');
+const swaggerUI = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger-simple');
 const connectDB = require('./config/db');
-const SocketService = require('./services/socketService');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -18,26 +17,58 @@ const groupsRoutes = require('./routes/groups'); // Group chat routes
 
 // Initialize Express app
 const app = express();
-const server = http.createServer(app);
-
-// Initialize Socket.io with CORS
-const io = socketIo(server, {
-  cors: {
-    origin: '*', // Change this in production
-    methods: ['GET', 'POST']
-  }
-});
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins in development
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB
 connectDB();
 
-// Initialize Socket Service
-new SocketService(io);
+// Export Swagger JSON
+app.get('/api/docs/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="swagger.json"');
+  res.send(swaggerSpecs);
+});
+
+// Export Swagger YAML (optional)
+app.get('/api/docs/swagger.yaml', (req, res) => {
+  const yaml = require('js-yaml');
+  res.setHeader('Content-Type', 'application/x-yaml');
+  res.setHeader('Content-Disposition', 'attachment; filename="swagger.yaml"');
+  try {
+    const yamlStr = yaml.dump(swaggerSpecs);
+    res.send(yamlStr);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to convert to YAML' });
+  }
+});
+
+// Swagger Documentation
+app.use('/api/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpecs, {
+  customCss: `
+    .swagger-ui .topbar { display: none }
+    .swagger-ui .info { margin: 20px 0; }
+    .swagger-ui .info .title { color: #3b82f6; }
+  `,
+  customSiteTitle: 'E2EE Chat API Documentation',
+  explorer: true,
+  swaggerOptions: {
+    urls: [
+      {
+        url: '/api/docs/swagger.json',
+        name: 'E2EE Chat API'
+      }
+    ]
+  }
+}));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -54,7 +85,29 @@ app.use('/uploads', express.static('uploads'));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ status: 'ok', message: 'Server đang hoạt động' });
+});
+
+// API root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Chào mừng đến với API Chat E2EE',
+    version: '1.0.0',
+    documentation: '/api/docs',
+    swagger_json: '/api/docs/swagger.json',
+    swagger_yaml: '/api/docs/swagger.yaml',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      users: '/api/users', 
+      messages: '/api/messages',
+      files: '/api/files',
+      profile: '/api/profile',
+      admin: '/api/admin',
+      storage: '/api',
+      groups: '/api/groups'
+    }
+  });
 });
 
 // Error handling middleware
@@ -64,18 +117,18 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════╗
 ║  E2EE Chat Server                          ║
 ║  Port: ${PORT}                              ║
 ║  Environment: ${process.env.NODE_ENV || 'development'}              ║
-║  Socket.IO: Ready                          ║
+║  Status: Ready                             ║
 ╚════════════════════════════════════════════╝
   `);
   console.log(`✓ Server listening on http://localhost:${PORT}`);
-  console.log(`✓ Socket.IO endpoint: http://localhost:${PORT}/socket.io/`);
+  console.log(`✓ API Health Check: http://localhost:${PORT}/health`);
 }).on('error', (err) => {
   console.error('❌ Server failed to start:', err);
   if (err.code === 'EADDRINUSE') {
@@ -84,4 +137,4 @@ server.listen(PORT, '0.0.0.0', () => {
   process.exit(1);
 });
 
-module.exports = { app, server, io };
+module.exports = { app };

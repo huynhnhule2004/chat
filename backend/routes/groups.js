@@ -4,7 +4,15 @@ const bcrypt = require('bcryptjs');
 const Room = require('../models/Room');
 const RoomMember = require('../models/RoomMember');
 const User = require('../models/User');
+const Message = require('../models/Message');
 const auth = require('../middleware/auth');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Groups
+ *   description: Group chat management endpoints with E2EE support
+ */
 
 /**
  * ============================================================
@@ -23,6 +31,73 @@ const auth = require('../middleware/auth');
  * 4. Kick Member -> Rotate SessionKey -> Re-encrypt for remaining members
  */
 
+/**
+ * @swagger
+ * /api/groups/create:
+ *   post:
+ *     summary: Create a new group chat
+ *     description: |
+ *       Create a new group chat with E2EE support. The client must generate a session key 
+ *       and encrypt it for each initial member using their RSA public keys.
+ *     tags: [Groups]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - encryptedSessionKeys
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Group name
+ *               avatar:
+ *                 type: string
+ *                 description: Group avatar URL
+ *               description:
+ *                 type: string
+ *                 description: Group description
+ *               password:
+ *                 type: string
+ *                 description: Optional password protection
+ *               initialMembers:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of user IDs to add as initial members
+ *               encryptedSessionKeys:
+ *                 type: array
+ *                 description: Session keys encrypted for each member
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                     encryptedKey:
+ *                       type: string
+ *     responses:
+ *       201:
+ *         description: Group created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 room:
+ *                   $ref: '#/components/schemas/Room'
+ *                 myEncryptedKey:
+ *                   type: string
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 /**
  * POST /api/groups/create
  * Create a new group chat
@@ -299,80 +374,225 @@ router.get('/:roomId', auth, async (req, res) => {
 });
 
 /**
- * GET /api/groups
- * Get user's groups
+ * @swagger
+ * /api/groups:
+ *   get:
+ *     summary: Lấy danh sách groups của user
+ *     description: Lấy tất cả groups mà user hiện tại là thành viên
+ *     tags: [Groups]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Số trang
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Số group mỗi trang
+ *     responses:
+ *       200:
+ *         description: Danh sách groups
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 groups:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Room'
+ *                 totalGroups:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
  */
-router.get('/', auth, async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const userRooms = await RoomMember.getUserRooms(userId);
-
-    res.json({
-      rooms: userRooms.map(rm => ({
-        id: rm.roomId._id,
-        name: rm.roomId.name,
-        avatar: rm.roomId.avatar,
-        type: rm.roomId.type,
-        owner: rm.roomId.ownerId,
-        memberCount: rm.roomId.memberCount,
-        unreadCount: rm.unreadCount,
-        lastMessageAt: rm.roomId.lastMessageAt,
-        role: rm.role,
-        isMuted: rm.isMuted
-      }))
-    });
-
-  } catch (error) {
-    console.error('Get user groups error:', error);
-    res.status(500).json({ error: 'Failed to get groups' });
-  }
-});
 
 /**
- * GET /api/groups/discover/public
- * Discover public groups (no password, not private)
- * Excludes groups user is already a member of
+ * @swagger
+ * /api/groups/{groupId}/join:
+ *   post:
+ *     summary: Tham gia group chat
+ *     description: |
+ *       Tham gia group chat. Nếu group có password thì cần cung cấp.
+ *       Server sẽ trả về encrypted session key của user.
+ *     tags: [Groups]
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của group
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 description: Password của group (nếu có)
+ *     responses:
+ *       200:
+ *         description: Tham gia thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 room:
+ *                   $ref: '#/components/schemas/Room'
+ *                 encryptedSessionKey:
+ *                   type: string
+ *                   description: Session key đã mã hóa cho user
+ *       400:
+ *         description: Password sai hoặc đã là thành viên
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
  */
-router.get('/discover/public', auth, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = parseInt(req.query.skip) || 0;
 
-    // Get user's current groups
-    const userRoomIds = await RoomMember.find({ userId })
-      .distinct('roomId');
+/**
+ * @swagger
+ * /api/groups/{groupId}/leave:
+ *   post:
+ *     summary: Rời group chat
+ *     description: Rời khỏi group chat. Nếu là owner thì cần chuyển quyền owner trước.
+ *     tags: [Groups]
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của group
+ *     responses:
+ *       200:
+ *         description: Rời group thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Không thể rời - là owner duy nhất
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 
-    // Find public rooms excluding user's groups
-    const publicRooms = await Room.find({ 
-      isPasswordProtected: false,
-      isPrivate: false,
-      _id: { $nin: userRoomIds }  // Exclude groups user is already in
-    })
-      .populate('ownerId', 'username email avatar')
-      .limit(limit)
-      .skip(skip)
-      .sort({ memberCount: -1, createdAt: -1 });
+/**
+ * @swagger
+ * /api/groups/{groupId}/members:
+ *   get:
+ *     summary: Lấy danh sách thành viên
+ *     description: Lấy danh sách tất cả thành viên trong group
+ *     tags: [Groups]
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của group
+ *     responses:
+ *       200:
+ *         description: Danh sách thành viên
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/User'
+ *                       - type: object
+ *                         properties:
+ *                           role:
+ *                             type: string
+ *                             enum: [owner, admin, member]
+ *                           joinedAt:
+ *                             type: string
+ *                             format: date-time
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Không phải thành viên group
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 
-    res.json({
-      rooms: publicRooms.map(room => ({
-        id: room._id,
-        name: room.name,
-        avatar: room.avatar,
-        description: room.description,
-        owner: room.ownerId,
-        memberCount: room.memberCount,
-        isPasswordProtected: false,
-        createdAt: room.createdAt
-      }))
-    });
-
-  } catch (error) {
-    console.error('Discover public groups error:', error);
-    res.status(500).json({ error: 'Failed to discover groups' });
-  }
-});
+/**
+ * @swagger
+ * /api/groups/{groupId}/messages:
+ *   get:
+ *     summary: Lấy tin nhắn trong group
+ *     description: Lấy lịch sử tin nhắn trong group chat
+ *     tags: [Groups]
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của group
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Số tin nhắn mỗi trang
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Số tin nhắn bỏ qua (pagination)
+ *     responses:
+ *       200:
+ *         description: Danh sách tin nhắn
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Message'
+ *                 hasMore:
+ *                   type: boolean
+ *                   description: Còn tin nhắn cũ hơn không
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Không phải thành viên group
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 
 /**
  * POST /api/groups/:roomId/kick

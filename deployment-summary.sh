@@ -1,0 +1,41 @@
+#!/bin/bash
+
+echo "🎯 Backend Deployment Summary"
+echo "========================================="
+echo "✅ Server: 146.190.194.170"
+echo "✅ MongoDB: System MongoDB running on port 27017"
+echo "✅ Docker: Version 28.5.0 with Compose v2.40.0"
+echo "✅ Package: backend-deploy-fixed.tar.gz deployed"
+echo "✅ Config: Using host network mode for MongoDB access"
+echo "✅ Container: chat_backend_api built and started"
+echo ""
+echo "📊 Deployment Status: SUCCESS"
+echo "🐳 Container Status: Running (healthy)"
+echo "🗄️  Database: Connected to system MongoDB"
+echo "🔧 Environment: Production"
+echo "🌐 Port: 5000"
+echo ""
+echo "🌍 Access URLs:"
+echo "   API Health: http://146.190.194.170:5000/health"
+echo "   Swagger UI: http://146.190.194.170:5000/api/docs" 
+echo "   API Base:   http://146.190.194.170:5000/api"
+echo ""
+echo "🛠️  Management Commands (on server):"
+echo "   cd /root/trung_dev"
+echo "   docker compose ps              # Check status"
+echo "   docker compose logs backend    # View logs"
+echo "   docker compose restart backend # Restart service"
+echo "   docker compose down            # Stop service"
+echo ""
+echo "✨ Deployment completed successfully!"
+echo "🎉 Backend API with Swagger documentation is now running"
+
+# Test connection if possible
+echo ""
+echo "🔍 Testing connection..."
+if curl -s -m 5 http://146.190.194.170:5000/health > /dev/null 2>&1; then
+    echo "✅ API is accessible externally"
+else 
+    echo "⚠️  External access test failed (may be firewall/network)"
+    echo "   Try: ssh root@146.190.194.170 'curl http://localhost:5000/health'"
+fi
